@@ -6,6 +6,7 @@ import time
 import logging
 import random
 from pathlib import Path
+from typing import List
 import numpy as np
 
 import torch
@@ -15,11 +16,8 @@ import torch.optim as optim
 from utility.utils import (
     setuplogger,
     init_process,
-    cleanup_process,
-    get_device,
     lr_schedule,
     get_barrier,
-    only_on_main_process,
 )
 from utility.metrics import acc, MetricsDict
 from args import parse_args
@@ -39,19 +37,7 @@ def ddp_train_vd(args: Args):
     """
     setuplogger()
     Path(args.model_dir).mkdir(parents=True, exist_ok=True)
-
     logging.info("-----------start train------------")
-
-    # cache_state = mp.Manager().dict()
-    # data_files = mp.Manager().list([])
-    # end_dataloder = mp.Manager().Value("b", False)
-    # end_train = mp.Manager().Value("b", False)
-    # mp.spawn(
-    #     train,
-    #     args=(args, cache_state, data_files, end_dataloder, end_train),
-    #     nprocs=args.world_size,
-    #     join=True,
-    # )
     train(0, args)
 
 
@@ -59,7 +45,7 @@ def train(
     local_rank: int,
     args: Args,
     cache_state=dict(),
-    data_files=[],
+    data_files: List = [],
     end_dataloder=False,
     end_train=False,
     dist_training=False,
@@ -67,14 +53,11 @@ def train(
     setuplogger()
     if dist_training:
         init_process(local_rank, args.world_size)
-    # device = get_device()
     device = "cuda:1"
     barrier = get_barrier(dist_training)
 
     news_info, news_combined = get_news_feature(args, mode="train")
 
-    # with only_on_main_process(local_rank, barrier) as need:
-    #     if need:
     data_paths = []
     data_dirs = os.path.join(args.root_data_dir, "train/")
     data_paths.extend(get_files(data_dirs, args.filename_pat))
@@ -99,17 +82,7 @@ def train(
             {"params": rest_param, "lr": args.lr},  # lr_schedule(args.lr, 1, args)
         ]
     )
-    #
 
-    # if dist_training:
-    #     ddp_model = DDP(
-    #         model,
-    #         device_ids=[local_rank],
-    #         output_device=local_rank,
-    #         find_unused_parameters=True,
-    #         broadcast_buffers=False,
-    #     )
-    # else:
     ddp_model = model
 
     logging.info("Training...")
@@ -127,19 +100,16 @@ def train(
     encode_num = 0
     cache = np.zeros((len(news_combined), args.news_dim))
     for ep in range(args.epochs):
-        # with only_on_main_process(local_rank, barrier) as need:
-        #     if need:
         while len(data_files) > 0:
             data_files.pop()
         data_files.extend(data_paths)
         random.shuffle(data_files)
-        # barrier()
 
         dataloader = DataLoaderTrainForSpeedyRec(
             args=args,
             data_files=data_files,
-            cache_state=cache_state,
             end=end_dataloder,
+            device=device,
             local_rank=local_rank,
             world_size=args.world_size,
             news_features=news_combined,
@@ -336,14 +306,6 @@ def train(
         barrier()
         if end_train.value:
             break
-
-    if dist_training:
-        cleanup_process()
-
-    # except:
-    #     error_type, error_value, error_trace = sys.exc_info()
-    #     traceback.print_tb(error_trace)
-    #     logging.info(error_value)
 
 
 def test(model, args, device, category_dict, subcategory_dict):

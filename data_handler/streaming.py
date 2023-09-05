@@ -2,6 +2,7 @@ import os
 import logging
 import fnmatch
 import random
+from typing import List
 import numpy as np
 import tensorflow as tf
 from queue import Queue
@@ -53,7 +54,7 @@ def get_worker_files(
 
 
 class StreamReader:
-    def __init__(self, data_paths, batch_size, shuffle=False, shuffle_buffer_size=1000):
+    def __init__(self, data_paths: List[str], batch_size: int):
         tf.config.experimental.set_visible_devices([], device_type="GPU")
         logging.info(f"visible_devices:{tf.config.experimental.get_visible_devices()}")
         path_len = len(data_paths)
@@ -113,9 +114,7 @@ class StreamSampler:
             seed=shuffle_seed,
         )
         self.data_paths = data_paths
-        self.stream_reader = StreamReader(
-            data_paths, batch_size, enable_shuffle, shuffle_buffer_size
-        )
+        self.stream_reader = StreamReader(data_paths, batch_size)
 
     def __iter__(self):
         self.stream_reader.reset()
@@ -139,7 +138,7 @@ class StreamSampler:
 
 
 class StreamReaderForSpeedy:
-    def __init__(self, file, batch_size):
+    def __init__(self, file: List[str], batch_size: int):
         self.file = file
         self.stream_reader = StreamReader(file, batch_size)
 
@@ -149,7 +148,6 @@ class StreamReaderForSpeedy:
 
     def __next__(self):
         """Implement iterator interface."""
-        # logging.info(f"[StreamSampler] __next__")
         next_batch = self.stream_reader.get_next()
         if (
             not isinstance(next_batch, np.ndarray)
@@ -235,7 +233,7 @@ class StreamSamplerTrainForSpeedyRec:
 
 
 class StreamReaderTest(StreamReader):
-    def __init__(self, data_paths, batch_size, shuffle, shuffle_buffer_size=1000):
+    def __init__(self, data_paths, batch_size):
         tf.config.experimental.set_visible_devices([], device_type="GPU")
         # logging.info(f"visible_devices:{tf.config.experimental.get_visible_devices()}")
         path_len = len(data_paths)
@@ -279,6 +277,4 @@ class StreamSamplerTest(StreamSampler):
             seed=shuffle_seed,
         )
         self.data_paths = data_paths
-        self.stream_reader = StreamReaderTest(
-            data_paths, batch_size, enable_shuffle, shuffle_buffer_size
-        )
+        self.stream_reader = StreamReaderTest(data_paths, batch_size)

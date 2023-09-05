@@ -1,23 +1,17 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT License.
 
-import sys
-import traceback
 import random
 from queue import Queue
 from concurrent.futures import ThreadPoolExecutor
+from typing import Dict, List
 import numpy as np
 import logging
 import math
-import os
 
 import torch
-import torch.distributed as dist
 from torch.utils.data import IterableDataset
-
 from data_handler.streaming import StreamReaderForSpeedy
-from utility.utils import MODEL_CLASSES
-
 from args import Args
 
 
@@ -32,12 +26,13 @@ class DataLoaderTrainForSpeedyRec(IterableDataset):
         self,
         args: Args,
         data_files,
-        cache_state,
-        end,
-        local_rank,
-        world_size,
-        news_features,
-        news_index,
+        end: bool,
+        device: str,
+        local_rank: int,
+        world_size: int,
+        news_features: np.array,
+        # 'N24427':445, 'N60739':446, 'N24132':447
+        news_index: Dict[str, int],
         enable_prefetch=True,
         enable_prefetch_stream=True,
         global_step=0,
@@ -55,8 +50,8 @@ class DataLoaderTrainForSpeedyRec(IterableDataset):
         """
         self.args = args
         self.beta_for_cache = args.beta_for_cache
-        # self.cache_state = cache_state
         self.end = end
+        self.device = device
         self.local_rank = local_rank
         self.world_size = world_size
         self.enable_prefetch = enable_prefetch
@@ -83,8 +78,8 @@ class DataLoaderTrainForSpeedyRec(IterableDataset):
         # self.end.value = False
         if self.enable_prefetch:
             self.start_async()
-        else:
-            self.outputs = self.dynamic_batch().__iter__()
+        # else:
+        #     self.outputs = self.dynamic_batch().__iter__()
         return self
 
     def start_async(self):
@@ -96,12 +91,10 @@ class DataLoaderTrainForSpeedyRec(IterableDataset):
         self.pool.submit(self._produce)
 
     def __next__(self):
-        # dist.barrier()
         while self.aval_count == 0:
             if self.local_end or self.global_end:
                 self.global_end = True
                 break
-        # dist.barrier()
         if self.global_end:
             raise StopIteration
         next_batch = self.outputs.get()
@@ -109,30 +102,19 @@ class DataLoaderTrainForSpeedyRec(IterableDataset):
         return next_batch
 
     def _produce(self):
-        try:
-            for (
-                address_cache,
-                update_cache,
-                start_inx,
-                end_inx,
-                batch,
-            ) in self.dynamic_batch():
-                self.global_step += 1
-                self.update_use_cache()
+        for (
+            address_cache,
+            update_cache,
+            start_inx,
+            end_inx,
+            batch,
+        ) in self.dynamic_batch():
+            self.global_step += 1
+            self.update_use_cache()
 
-                self.outputs.put(
-                    (address_cache, update_cache, start_inx, end_inx, batch)
-                )
-                self.aval_count += 1
-            self.local_end = True
-        except:
-            error_type, error_value, error_trace = sys.exc_info()
-            traceback.print_tb(error_trace)
-            logging.info(error_value)
-            self.pool.shutdown(wait=False)
-            raise
-            # self.pool.shutdown(wait=False)
-            # raise
+            self.outputs.put((address_cache, update_cache, start_inx, end_inx, batch))
+            self.aval_count += 1
+        self.local_end = True
 
     def dynamic_batch(self):
         """
@@ -144,7 +126,7 @@ class DataLoaderTrainForSpeedyRec(IterableDataset):
         self.use_cache = False
         self.timer = 0
         if self.args.enable_gpu:
-            torch.cuda.set_device(self.local_rank)
+            torch.cuda.set_device(self.device)
 
         self.sampler_batch = StreamReaderForSpeedy(
             file=self.sub_files, batch_size=self.batch_size
@@ -169,7 +151,7 @@ class DataLoaderTrainForSpeedyRec(IterableDataset):
         # self.end.value = True
         self.local_end = True
 
-    def drop_encoder_prob(self, step):
+    def drop_encoder_prob(self, step: int):
         return self.args.max_hit_ratio - math.exp(
             max(-step * self.beta_for_cache, -1000)
         )
@@ -292,9 +274,9 @@ class DataLoaderTrainForSpeedyRec(IterableDataset):
             (input_ids, hist_sequence, hist_sequence_mask, candidate_inx, label_batch),
         )
 
-    def _process(self, batch):
+    def _process(self, batch: List[bytes]): # np.ndarray of bytes
         random.seed(self.global_step)
-        batch = [x.decode(encoding="utf-8").split("\t") for x in batch]
+        batch: List[List[str]] = [x.decode(encoding="utf-8").split("\t") for x in batch]
         news_set, behavior_set, uid_click_docs, uid_sample_news = [], [], [], []
         for line in batch:
             click_docs = [i for i in line[2].split()]
