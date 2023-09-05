@@ -3,6 +3,7 @@ import numpy as np
 import logging
 import torch
 
+
 def dcg_score(y_true, y_score, k=10):
     order = np.argsort(y_score)[::-1]
     y_true = np.take(y_true, order[:k])
@@ -29,6 +30,7 @@ def ctr_score(y_true, y_score, k=1):
     y_true = np.take(y_true, order[:k])
     return np.mean(y_true)
 
+
 def acc(y_true, y_hat):
     y_hat = torch.argmax(y_hat, dim=-1)
     tot = y_true.shape[0]
@@ -36,7 +38,7 @@ def acc(y_true, y_hat):
     return hit.data.float() * 1.0 / tot
 
 
-class MetricsDict():
+class MetricsDict:
     def __init__(self, metrics_name):
         self.metrics_dict = {}
         self.metrics_name = metrics_name
@@ -48,13 +50,13 @@ class MetricsDict():
 
     def cal_metrics(self, score, label):
         metric_rslt = {}
-        if 'AUC' in self.metrics_name:
+        if "AUC" in self.metrics_name:
             metric_rslt["AUC"] = roc_auc_score(label, score)
-        if 'MRR' in self.metrics_name:
+        if "MRR" in self.metrics_name:
             metric_rslt["MRR"] = mrr_score(label, score)
-        if 'nDCG5' in self.metrics_name:
+        if "nDCG5" in self.metrics_name:
             metric_rslt["nDCG5"] = ndcg_score(label, score, k=5)
-        if 'nDCG10' in self.metrics_name:
+        if "nDCG10" in self.metrics_name:
             metric_rslt["nDCG10"] = ndcg_score(label, score, k=10)
         return metric_rslt
 
@@ -66,7 +68,14 @@ class MetricsDict():
         def __get_mean(arr):
             return [np.array(i).mean() for i in arr]
 
-        arr = __get_mean([self.metrics_dict[name][metric_name] for metric_name in self.metrics_name])
-        logging.info("[{}] {} Ed: {}: {}".format(
-            local_rank, name, cnt,
-            '\t'.join(["{:0.2f}".format(i * 100) for i in arr])))
+        arr = __get_mean(
+            [self.metrics_dict[name][metric_name] for metric_name in self.metrics_name]
+        )
+        logging.info(
+            "[{}] {} Ed: {}: {}".format(
+                local_rank,
+                name,
+                cnt,
+                "\t".join(["{:0.2f}".format(i * 100) for i in arr]),
+            )
+        )

@@ -26,12 +26,20 @@ class LabelSmoothingLoss(_Loss):
     and p_{prob. computed by model}(w) is minimized.
     """
 
-    def __init__(self, label_smoothing=0, tgt_vocab_size=0, ignore_index=0, size_average=None, reduce=None,
-                 reduction='mean'):
+    def __init__(
+        self,
+        label_smoothing=0,
+        tgt_vocab_size=0,
+        ignore_index=0,
+        size_average=None,
+        reduce=None,
+        reduction="mean",
+    ):
         assert 0.0 < label_smoothing <= 1.0
         self.ignore_index = ignore_index
         super(LabelSmoothingLoss, self).__init__(
-            size_average=size_average, reduce=reduce, reduction=reduction)
+            size_average=size_average, reduce=reduce, reduction=reduction
+        )
 
         assert label_smoothing > 0
         assert tgt_vocab_size > 0
@@ -39,7 +47,7 @@ class LabelSmoothingLoss(_Loss):
         smoothing_value = label_smoothing / (tgt_vocab_size - 2)
         one_hot = torch.full((tgt_vocab_size,), smoothing_value)
         one_hot[self.ignore_index] = 0
-        self.register_buffer('one_hot', one_hot.unsqueeze(0))
+        self.register_buffer("one_hot", one_hot.unsqueeze(0))
         self.confidence = 1.0 - label_smoothing
         self.tgt_vocab_size = tgt_vocab_size
 
@@ -56,7 +64,11 @@ class LabelSmoothingLoss(_Loss):
         model_prob.scatter_(1, target.unsqueeze(1), self.confidence)
         model_prob.masked_fill_((target == self.ignore_index).unsqueeze(1), 0)
 
-        return F.kl_div(output, model_prob, reduction='none').view(batch_size, num_pos, -1).sum(2)
+        return (
+            F.kl_div(output, model_prob, reduction="none")
+            .view(batch_size, num_pos, -1)
+            .sum(2)
+        )
 
 
 logger = logging.getLogger(__name__)
@@ -66,8 +78,8 @@ from transformers import WEIGHTS_NAME
 
 def gelu(x):
     """Implementation of the gelu activation function.
-        For information: OpenAI GPT's gelu is slightly different (and gives slightly different results):
-        0.5 * x * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
+    For information: OpenAI GPT's gelu is slightly different (and gives slightly different results):
+    0.5 * x * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
     """
     return x * 0.5 * (1.0 + torch.erf(x / math.sqrt(2.0)))
 
@@ -80,33 +92,35 @@ ACT2FN = {"gelu": gelu, "relu": torch.nn.functional.relu, "swish": swish}
 
 
 class BertConfig(object):
-    """Configuration class to store the configuration of a `BertModel`.
-    """
+    """Configuration class to store the configuration of a `BertModel`."""
 
-    def __init__(self,
-                 vocab_size_or_config_json_file,
-                 hidden_size=768,
-                 num_hidden_layers=12,
-                 num_attention_heads=12,
-                 intermediate_size=3072,
-                 hidden_act="gelu",
-                 hidden_dropout_prob=0.1,
-                 attention_probs_dropout_prob=0.1,
-                 max_position_embeddings=512,
-                 type_vocab_size=2,
-                 relax_projection=0,
-                 new_pos_ids=False,
-                 initializer_range=0.02,
-                 task_idx=None,
-                 fp32_embedding=False,
-                 ffn_type=0,
-                 label_smoothing=None,
-                 num_qkv=0,
-                 seg_emb=False,
-                 source_type_id=0,
-                 target_type_id=1,
-                 rel_pos_bins=0,
-                 max_rel_pos=0, **kwargs):
+    def __init__(
+        self,
+        vocab_size_or_config_json_file,
+        hidden_size=768,
+        num_hidden_layers=12,
+        num_attention_heads=12,
+        intermediate_size=3072,
+        hidden_act="gelu",
+        hidden_dropout_prob=0.1,
+        attention_probs_dropout_prob=0.1,
+        max_position_embeddings=512,
+        type_vocab_size=2,
+        relax_projection=0,
+        new_pos_ids=False,
+        initializer_range=0.02,
+        task_idx=None,
+        fp32_embedding=False,
+        ffn_type=0,
+        label_smoothing=None,
+        num_qkv=0,
+        seg_emb=False,
+        source_type_id=0,
+        target_type_id=1,
+        rel_pos_bins=0,
+        max_rel_pos=0,
+        **kwargs
+    ):
         """Constructs BertConfig.
         Args:
             vocab_size_or_config_json_file: Vocabulary size of `inputs_ids` in `BertModel`.
@@ -131,7 +145,7 @@ class BertConfig(object):
                 initializing all weight matrices.
         """
         if isinstance(vocab_size_or_config_json_file, str):
-            with open(vocab_size_or_config_json_file, "r", encoding='utf-8') as reader:
+            with open(vocab_size_or_config_json_file, "r", encoding="utf-8") as reader:
                 json_config = json.loads(reader.read())
             for key, value in json_config.items():
                 self.__dict__[key] = value
@@ -160,8 +174,10 @@ class BertConfig(object):
             self.max_rel_pos = max_rel_pos
             self.rel_pos_bins = rel_pos_bins
         else:
-            raise ValueError("First argument must be either a vocabulary size (int)"
-                             "or the path to a pretrained model config file (str)")
+            raise ValueError(
+                "First argument must be either a vocabulary size (int)"
+                "or the path to a pretrained model config file (str)"
+            )
 
     @classmethod
     def from_dict(cls, json_object):
@@ -174,7 +190,7 @@ class BertConfig(object):
     @classmethod
     def from_json_file(cls, json_file):
         """Constructs a `BertConfig` from a json file of parameters."""
-        with open(json_file, "r", encoding='utf-8') as reader:
+        with open(json_file, "r", encoding="utf-8") as reader:
             text = reader.read()
         return cls.from_dict(json.loads(text))
 
@@ -194,13 +210,13 @@ class BertConfig(object):
 try:
     from apex.normalization.fused_layer_norm import FusedLayerNorm as BertLayerNorm
 except ImportError:
-    print("Better speed can be achieved with apex installed from https://www.github.com/nvidia/apex.")
-
+    print(
+        "Better speed can be achieved with apex installed from https://www.github.com/nvidia/apex."
+    )
 
     class BertLayerNorm(nn.Module):
         def __init__(self, hidden_size, eps=1e-5):
-            """Construct a layernorm module in the TF style (epsilon inside the square root).
-            """
+            """Construct a layernorm module in the TF style (epsilon inside the square root)."""
             super(BertLayerNorm, self).__init__()
             self.weight = nn.Parameter(torch.ones(hidden_size))
             self.bias = nn.Parameter(torch.zeros(hidden_size))
@@ -220,7 +236,7 @@ class PositionalEmbedding(nn.Module):
         self.demb = demb
 
         inv_freq = 1 / (10000 ** (torch.arange(0.0, demb, 2.0) / demb))
-        self.register_buffer('inv_freq', inv_freq)
+        self.register_buffer("inv_freq", inv_freq)
 
     def forward(self, pos_seq, bsz=None):
         sinusoid_inp = torch.ger(pos_seq, self.inv_freq)
@@ -233,29 +249,29 @@ class PositionalEmbedding(nn.Module):
 
 
 class BertEmbeddings(nn.Module):
-    """Construct the embeddings from word, position and token_type embeddings.
-    """
+    """Construct the embeddings from word, position and token_type embeddings."""
 
     def __init__(self, config):
         super(BertEmbeddings, self).__init__()
-        self.word_embeddings = nn.Embedding(
-            config.vocab_size, config.hidden_size)
+        self.word_embeddings = nn.Embedding(config.vocab_size, config.hidden_size)
         if config.type_vocab_size == 0:
             self.token_type_embeddings = None
         else:
             self.token_type_embeddings = nn.Embedding(
-                config.type_vocab_size, config.hidden_size)
-        if hasattr(config, 'fp32_embedding'):
+                config.type_vocab_size, config.hidden_size
+            )
+        if hasattr(config, "fp32_embedding"):
             self.fp32_embedding = config.fp32_embedding
         else:
             self.fp32_embedding = False
 
-        if hasattr(config, 'new_pos_ids') and config.new_pos_ids:
+        if hasattr(config, "new_pos_ids") and config.new_pos_ids:
             self.num_pos_emb = 4
         else:
             self.num_pos_emb = 1
         self.position_embeddings = nn.Embedding(
-            config.max_position_embeddings, config.hidden_size * self.num_pos_emb)
+            config.max_position_embeddings, config.hidden_size * self.num_pos_emb
+        )
 
         # self.LayerNorm is not snake-cased to stick with TensorFlow model variable name and be able to load
         # any TensorFlow checkpoint file
@@ -266,7 +282,8 @@ class BertEmbeddings(nn.Module):
         seq_length = input_ids.size(1)
         if position_ids is None:
             position_ids = torch.arange(
-                seq_length, dtype=torch.long, device=input_ids.device)
+                seq_length, dtype=torch.long, device=input_ids.device
+            )
             position_ids = position_ids.unsqueeze(0).expand_as(input_ids)
         if token_type_ids is None:
             token_type_ids = torch.zeros_like(input_ids)
@@ -278,7 +295,8 @@ class BertEmbeddings(nn.Module):
             num_batch = position_embeddings.size(0)
             num_pos = position_embeddings.size(1)
             position_embeddings = position_embeddings.view(
-                num_batch, num_pos, self.num_pos_emb, -1)[torch.arange(0, num_batch).long(), :, task_idx, :]
+                num_batch, num_pos, self.num_pos_emb, -1
+            )[torch.arange(0, num_batch).long(), :, task_idx, :]
 
         embeddings = words_embeddings + position_embeddings
 
@@ -298,44 +316,42 @@ class BertSelfAttention(nn.Module):
         if config.hidden_size % config.num_attention_heads != 0:
             raise ValueError(
                 "The hidden size (%d) is not a multiple of the number of attention "
-                "heads (%d)" % (config.hidden_size, config.num_attention_heads))
+                "heads (%d)" % (config.hidden_size, config.num_attention_heads)
+            )
         self.num_attention_heads = config.num_attention_heads
-        self.attention_head_size = int(
-            config.hidden_size / config.num_attention_heads)
+        self.attention_head_size = int(config.hidden_size / config.num_attention_heads)
         self.all_head_size = self.num_attention_heads * self.attention_head_size
 
-        if hasattr(config, 'num_qkv') and (config.num_qkv > 1):
+        if hasattr(config, "num_qkv") and (config.num_qkv > 1):
             self.num_qkv = config.num_qkv
         else:
             self.num_qkv = 1
 
-        self.query = nn.Linear(
-            config.hidden_size, self.all_head_size * self.num_qkv)
-        self.key = nn.Linear(config.hidden_size,
-                             self.all_head_size * self.num_qkv)
-        self.value = nn.Linear(
-            config.hidden_size, self.all_head_size * self.num_qkv)
+        self.query = nn.Linear(config.hidden_size, self.all_head_size * self.num_qkv)
+        self.key = nn.Linear(config.hidden_size, self.all_head_size * self.num_qkv)
+        self.value = nn.Linear(config.hidden_size, self.all_head_size * self.num_qkv)
 
         self.dropout = nn.Dropout(config.attention_probs_dropout_prob)
 
-        self.uni_debug_flag = True if os.getenv(
-            'UNI_DEBUG_FLAG', '') else False
+        self.uni_debug_flag = True if os.getenv("UNI_DEBUG_FLAG", "") else False
         if self.uni_debug_flag:
-            self.register_buffer('debug_attention_probs',
-                                 torch.zeros((512, 512)))
-        if hasattr(config, 'seg_emb') and config.seg_emb:
-            self.b_q_s = nn.Parameter(torch.zeros(
-                1, self.num_attention_heads, 1, self.attention_head_size))
-            self.seg_emb = nn.Embedding(
-                config.type_vocab_size, self.all_head_size)
+            self.register_buffer("debug_attention_probs", torch.zeros((512, 512)))
+        if hasattr(config, "seg_emb") and config.seg_emb:
+            self.b_q_s = nn.Parameter(
+                torch.zeros(1, self.num_attention_heads, 1, self.attention_head_size)
+            )
+            self.seg_emb = nn.Embedding(config.type_vocab_size, self.all_head_size)
         else:
             self.b_q_s = None
             self.seg_emb = None
 
     def transpose_for_scores(self, x, mask_qkv=None):
         if self.num_qkv > 1:
-            sz = x.size()[:-1] + (self.num_qkv,
-                                  self.num_attention_heads, self.all_head_size)
+            sz = x.size()[:-1] + (
+                self.num_qkv,
+                self.num_attention_heads,
+                self.all_head_size,
+            )
             # (batch, pos, num_qkv, head, head_hid)
             x = x.view(*sz)
             if mask_qkv is None:
@@ -345,22 +361,34 @@ class BertSelfAttention(nn.Module):
             else:
                 # mask_qkv: (batch, pos)
                 if mask_qkv.size(1) > sz[1]:
-                    mask_qkv = mask_qkv[:, :sz[1]]
+                    mask_qkv = mask_qkv[:, : sz[1]]
                 # -> x: (batch, pos, head, head_hid)
-                x = x.gather(2, mask_qkv.view(sz[0], sz[1], 1, 1, 1).expand(
-                    sz[0], sz[1], 1, sz[3], sz[4])).squeeze(2)
+                x = x.gather(
+                    2,
+                    mask_qkv.view(sz[0], sz[1], 1, 1, 1).expand(
+                        sz[0], sz[1], 1, sz[3], sz[4]
+                    ),
+                ).squeeze(2)
         else:
-            sz = x.size()[:-1] + (self.num_attention_heads,
-                                  self.attention_head_size)
+            sz = x.size()[:-1] + (self.num_attention_heads, self.attention_head_size)
             # (batch, pos, head, head_hid)
             x = x.view(*sz)
         # (batch, head, pos, head_hid)
         return x.permute(0, 2, 1, 3)
 
-    def forward(self, hidden_states, attention_mask, history_states=None,
-                mask_qkv=None, seg_ids=None, key_history=None, value_history=None,
-                key_cache=None, value_cache=None, rel_pos=None,
-                ):
+    def forward(
+        self,
+        hidden_states,
+        attention_mask,
+        history_states=None,
+        mask_qkv=None,
+        seg_ids=None,
+        key_history=None,
+        value_history=None,
+        key_cache=None,
+        value_cache=None,
+        rel_pos=None,
+    ):
         if history_states is None:
             mixed_query_layer = self.query(hidden_states)
             # possible issue: https://github.com/NVIDIA/apex/issues/131
@@ -392,17 +420,22 @@ class BertSelfAttention(nn.Module):
         # Take the dot product between "query" and "key" to get the raw attention scores.
         # (batch, head, pos, pos)
         attention_scores = torch.matmul(
-            query_layer / math.sqrt(self.attention_head_size), key_layer.transpose(-1, -2))
+            query_layer / math.sqrt(self.attention_head_size),
+            key_layer.transpose(-1, -2),
+        )
         if rel_pos is not None:
             attention_scores = attention_scores + rel_pos
 
         if self.seg_emb is not None:
             seg_rep = self.seg_emb(seg_ids)
             # (batch, pos, head, head_hid)
-            seg_rep = seg_rep.view(seg_rep.size(0), seg_rep.size(
-                1), self.num_attention_heads, self.attention_head_size)
-            qs = torch.einsum('bnih,bjnh->bnij',
-                              query_layer + self.b_q_s, seg_rep)
+            seg_rep = seg_rep.view(
+                seg_rep.size(0),
+                seg_rep.size(1),
+                self.num_attention_heads,
+                self.attention_head_size,
+            )
+            qs = torch.einsum("bnih,bjnh->bnij", query_layer + self.b_q_s, seg_rep)
             attention_scores = attention_scores + qs
 
         # attention_scores = attention_scores / math.sqrt(self.attention_head_size)
@@ -416,7 +449,8 @@ class BertSelfAttention(nn.Module):
         if self.uni_debug_flag:
             _pos = attention_probs.size(-1)
             self.debug_attention_probs[:_pos, :_pos].copy_(
-                attention_probs[0].mean(0).view(_pos, _pos))
+                attention_probs[0].mean(0).view(_pos, _pos)
+            )
 
         # This is actually dropping out entire tokens to attend to, which might
         # seem a bit unusual, but is taken from the original Transformer paper.
@@ -424,8 +458,7 @@ class BertSelfAttention(nn.Module):
 
         context_layer = torch.matmul(attention_probs, value_layer)
         context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
-        new_context_layer_shape = context_layer.size()[
-                                  :-2] + (self.all_head_size,)
+        new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
         context_layer = context_layer.view(*new_context_layer_shape)
 
         if isinstance(key_history, list):
@@ -456,11 +489,27 @@ class BertAttention(nn.Module):
         self.self = BertSelfAttention(config)
         self.output = BertSelfOutput(config)
 
-    def forward(self, input_tensor, attention_mask, history_states=None,
-                mask_qkv=None, seg_ids=None, key_history=None, value_history=None, rel_pos=None):
+    def forward(
+        self,
+        input_tensor,
+        attention_mask,
+        history_states=None,
+        mask_qkv=None,
+        seg_ids=None,
+        key_history=None,
+        value_history=None,
+        rel_pos=None,
+    ):
         self_output = self.self(
-            input_tensor, attention_mask, history_states=history_states,
-            mask_qkv=mask_qkv, seg_ids=seg_ids, key_history=key_history, value_history=value_history, rel_pos=rel_pos)
+            input_tensor,
+            attention_mask,
+            history_states=history_states,
+            mask_qkv=mask_qkv,
+            seg_ids=seg_ids,
+            key_history=key_history,
+            value_history=value_history,
+            rel_pos=rel_pos,
+        )
         attention_output = self.output(self_output, input_tensor)
         return attention_output
 
@@ -469,8 +518,11 @@ class BertIntermediate(nn.Module):
     def __init__(self, config):
         super(BertIntermediate, self).__init__()
         self.dense = nn.Linear(config.hidden_size, config.intermediate_size)
-        self.intermediate_act_fn = ACT2FN[config.hidden_act] \
-            if isinstance(config.hidden_act, str) else config.hidden_act
+        self.intermediate_act_fn = (
+            ACT2FN[config.hidden_act]
+            if isinstance(config.hidden_act, str)
+            else config.hidden_act
+        )
 
     def forward(self, hidden_states):
         hidden_states = self.dense(hidden_states)
@@ -530,11 +582,27 @@ class BertLayer(nn.Module):
             self.intermediate = BertIntermediate(config)
             self.output = BertOutput(config)
 
-    def forward(self, hidden_states, attention_mask, history_states=None,
-                mask_qkv=None, seg_ids=None, key_history=None, value_history=None, rel_pos=None):
+    def forward(
+        self,
+        hidden_states,
+        attention_mask,
+        history_states=None,
+        mask_qkv=None,
+        seg_ids=None,
+        key_history=None,
+        value_history=None,
+        rel_pos=None,
+    ):
         attention_output = self.attention(
-            hidden_states, attention_mask, history_states=history_states,
-            mask_qkv=mask_qkv, seg_ids=seg_ids, key_history=key_history, value_history=value_history, rel_pos=rel_pos)
+            hidden_states,
+            attention_mask,
+            history_states=history_states,
+            mask_qkv=mask_qkv,
+            seg_ids=seg_ids,
+            key_history=key_history,
+            value_history=value_history,
+            rel_pos=rel_pos,
+        )
         if self.ffn_type:
             layer_output = self.ffn(attention_output)
         else:
@@ -547,12 +615,23 @@ class BertEncoder(nn.Module):
     def __init__(self, config):
         super(BertEncoder, self).__init__()
         layer = BertLayer(config)
-        self.layer = nn.ModuleList([copy.deepcopy(layer)
-                                    for _ in range(config.num_hidden_layers)])
+        self.layer = nn.ModuleList(
+            [copy.deepcopy(layer) for _ in range(config.num_hidden_layers)]
+        )
 
-    def forward(self, hidden_states, attention_mask, output_all_encoded_layers=True, 
-                prev_embedding=None, prev_encoded_layers=None, mask_qkv=None, 
-                seg_ids=None, key_history=None, value_history=None, rel_pos=None):
+    def forward(
+        self,
+        hidden_states,
+        attention_mask,
+        output_all_encoded_layers=True,
+        prev_embedding=None,
+        prev_encoded_layers=None,
+        mask_qkv=None,
+        seg_ids=None,
+        key_history=None,
+        value_history=None,
+        rel_pos=None,
+    ):
         # history embedding and encoded layer must be simultanously given
         assert (prev_embedding is None) == (prev_encoded_layers is None)
 
@@ -561,8 +640,13 @@ class BertEncoder(nn.Module):
             history_states = prev_embedding
             for i, layer_module in enumerate(self.layer):
                 hidden_states = layer_module(
-                    hidden_states, attention_mask, history_states=history_states, 
-                    mask_qkv=mask_qkv, seg_ids=seg_ids, rel_pos=rel_pos)
+                    hidden_states,
+                    attention_mask,
+                    history_states=history_states,
+                    mask_qkv=mask_qkv,
+                    seg_ids=seg_ids,
+                    rel_pos=rel_pos,
+                )
                 if output_all_encoded_layers:
                     all_encoder_layers.append(hidden_states)
                 if prev_encoded_layers is not None:
@@ -571,13 +655,27 @@ class BertEncoder(nn.Module):
             for i, layer_module in enumerate(self.layer):
                 set_key = None
                 if isinstance(key_history, list):
-                    set_key = key_history if len(key_history) < len(self.layer) else key_history[i]
+                    set_key = (
+                        key_history
+                        if len(key_history) < len(self.layer)
+                        else key_history[i]
+                    )
                 set_value = None
                 if isinstance(value_history, list):
-                    set_value = value_history if len(key_history) < len(self.layer) else value_history[i]
+                    set_value = (
+                        value_history
+                        if len(key_history) < len(self.layer)
+                        else value_history[i]
+                    )
                 hidden_states = layer_module(
-                    hidden_states, attention_mask, mask_qkv=mask_qkv, seg_ids=seg_ids,
-                    key_history=set_key, value_history=set_value, rel_pos=rel_pos)
+                    hidden_states,
+                    attention_mask,
+                    mask_qkv=mask_qkv,
+                    seg_ids=seg_ids,
+                    key_history=set_key,
+                    value_history=set_value,
+                    rel_pos=rel_pos,
+                )
                 if output_all_encoded_layers:
                     all_encoder_layers.append(hidden_states)
         if not output_all_encoded_layers:
@@ -603,10 +701,13 @@ class BertPooler(nn.Module):
 class BertPredictionHeadTransform(nn.Module):
     def __init__(self, config):
         super(BertPredictionHeadTransform, self).__init__()
-        self.transform_act_fn = ACT2FN[config.hidden_act] \
-            if isinstance(config.hidden_act, str) else config.hidden_act
+        self.transform_act_fn = (
+            ACT2FN[config.hidden_act]
+            if isinstance(config.hidden_act, str)
+            else config.hidden_act
+        )
         hid_size = config.hidden_size
-        if hasattr(config, 'relax_projection') and (config.relax_projection > 1):
+        if hasattr(config, "relax_projection") and (config.relax_projection > 1):
             hid_size *= config.relax_projection
         self.dense = nn.Linear(config.hidden_size, hid_size)
         self.LayerNorm = BertLayerNorm(hid_size, eps=1e-5)
@@ -625,13 +726,14 @@ class BertLMPredictionHead(nn.Module):
 
         # The output weights are the same as the input embeddings, but there is
         # an output-only bias for each token.
-        self.decoder = nn.Linear(bert_model_embedding_weights.size(1),
-                                 bert_model_embedding_weights.size(0),
-                                 bias=False)
+        self.decoder = nn.Linear(
+            bert_model_embedding_weights.size(1),
+            bert_model_embedding_weights.size(0),
+            bias=False,
+        )
         self.decoder.weight = bert_model_embedding_weights
-        self.bias = nn.Parameter(torch.zeros(
-            bert_model_embedding_weights.size(0)))
-        if hasattr(config, 'relax_projection') and (config.relax_projection > 1):
+        self.bias = nn.Parameter(torch.zeros(bert_model_embedding_weights.size(0)))
+        if hasattr(config, "relax_projection") and (config.relax_projection > 1):
             self.relax_projection = config.relax_projection
         else:
             self.relax_projection = 0
@@ -657,10 +759,14 @@ class BertLMPredictionHead(nn.Module):
             num_pos = hidden_states.size(1)
             # (batch, num_pos, relax_projection*hid) -> (batch, num_pos, relax_projection, hid) -> (batch, num_pos, hid)
             hidden_states = hidden_states.view(
-                num_batch, num_pos, self.relax_projection, -1)[torch.arange(0, num_batch).long(), :, task_idx, :]
+                num_batch, num_pos, self.relax_projection, -1
+            )[torch.arange(0, num_batch).long(), :, task_idx, :]
         if self.fp32_embedding:
-            hidden_states = F.linear(self.type_converter(hidden_states), self.type_converter(
-                self.decoder.weight), self.type_converter(self.bias))
+            hidden_states = F.linear(
+                self.type_converter(hidden_states),
+                self.type_converter(self.decoder.weight),
+                self.type_converter(self.bias),
+            )
         else:
             hidden_states = self.decoder(hidden_states) + self.bias
         return hidden_states
@@ -669,8 +775,7 @@ class BertLMPredictionHead(nn.Module):
 class BertOnlyMLMHead(nn.Module):
     def __init__(self, config, bert_model_embedding_weights):
         super(BertOnlyMLMHead, self).__init__()
-        self.predictions = BertLMPredictionHead(
-            config, bert_model_embedding_weights)
+        self.predictions = BertLMPredictionHead(config, bert_model_embedding_weights)
 
     def forward(self, sequence_output):
         prediction_scores = self.predictions(sequence_output)
@@ -690,8 +795,7 @@ class BertOnlyNSPHead(nn.Module):
 class BertPreTrainingHeads(nn.Module):
     def __init__(self, config, bert_model_embedding_weights, num_labels=2):
         super(BertPreTrainingHeads, self).__init__()
-        self.predictions = BertLMPredictionHead(
-            config, bert_model_embedding_weights)
+        self.predictions = BertLMPredictionHead(config, bert_model_embedding_weights)
         self.seq_relationship = nn.Linear(config.hidden_size, num_labels)
 
     def forward(self, sequence_output, pooled_output, task_idx=None):
@@ -704,8 +808,8 @@ class BertPreTrainingHeads(nn.Module):
 
 
 class PreTrainedBertModel(nn.Module):
-    """ An abstract class to handle weights initialization and
-        a simple interface for dowloading and loading pretrained models.
+    """An abstract class to handle weights initialization and
+    a simple interface for dowloading and loading pretrained models.
     """
 
     def __init__(self, config, *inputs, **kwargs):
@@ -716,12 +820,12 @@ class PreTrainedBertModel(nn.Module):
                 "To create a model from a Google pretrained model use "
                 "`model = {}.from_pretrained(PRETRAINED_MODEL_NAME)`".format(
                     self.__class__.__name__, self.__class__.__name__
-                ))
+                )
+            )
         self.config = config
 
     def init_bert_weights(self, module):
-        """ Initialize the weights.
-        """
+        """Initialize the weights."""
         if isinstance(module, (nn.Linear, nn.Embedding)):
             # Slightly different from the TF version which uses truncated_normal for initialization
             # cf https://github.com/pytorch/pytorch/pull/5617
@@ -735,7 +839,15 @@ class PreTrainedBertModel(nn.Module):
             module.bias.data.zero_()
 
     @classmethod
-    def from_pretrained(cls, pretrained_model_name, config, state_dict=None, cache_dir=None, *inputs, **kwargs):
+    def from_pretrained(
+        cls,
+        pretrained_model_name,
+        config,
+        state_dict=None,
+        cache_dir=None,
+        *inputs,
+        **kwargs
+    ):
         """
         Instantiate a PreTrainedBertModel from a pre-trained model file or a pytorch state dict.
         Download and cache the pre-trained model file if needed.
@@ -758,10 +870,25 @@ class PreTrainedBertModel(nn.Module):
         logger.info("Model config {}".format(config))
 
         # clean the arguments in kwargs
-        for arg_clean in ('config_path', 'type_vocab_size', 'relax_projection', 'new_pos_ids', 'task_idx',
-                          'max_position_embeddings', 'fp32_embedding', 'ffn_type', 'label_smoothing',
-                          'hidden_dropout_prob', 'attention_probs_dropout_prob', 'num_qkv', 'seg_emb',
-                          'word_emb_map', 'num_labels', 'num_rel', 'num_sentlvl_labels'):
+        for arg_clean in (
+            "config_path",
+            "type_vocab_size",
+            "relax_projection",
+            "new_pos_ids",
+            "task_idx",
+            "max_position_embeddings",
+            "fp32_embedding",
+            "ffn_type",
+            "label_smoothing",
+            "hidden_dropout_prob",
+            "attention_probs_dropout_prob",
+            "num_qkv",
+            "seg_emb",
+            "word_emb_map",
+            "num_labels",
+            "num_rel",
+            "num_sentlvl_labels",
+        ):
             if arg_clean in kwargs:
                 del kwargs[arg_clean]
 
@@ -775,10 +902,10 @@ class PreTrainedBertModel(nn.Module):
         new_keys = []
         for key in state_dict.keys():
             new_key = None
-            if 'gamma' in key:
-                new_key = key.replace('gamma', 'weight')
-            if 'beta' in key:
-                new_key = key.replace('beta', 'bias')
+            if "gamma" in key:
+                new_key = key.replace("gamma", "weight")
+            if "beta" in key:
+                new_key = key.replace("beta", "bias")
             if new_key:
                 old_keys.append(key)
                 new_keys.append(new_key)
@@ -789,30 +916,42 @@ class PreTrainedBertModel(nn.Module):
         unexpected_keys = []
         error_msgs = []
         # copy state_dict so _load_from_state_dict can modify it
-        metadata = getattr(state_dict, '_metadata', None)
+        metadata = getattr(state_dict, "_metadata", None)
         state_dict = state_dict.copy()
         if metadata is not None:
             state_dict._metadata = metadata
 
-        def load(module, prefix=''):
-            local_metadata = {} if metadata is None else metadata.get(
-                prefix[:-1], {})
+        def load(module, prefix=""):
+            local_metadata = {} if metadata is None else metadata.get(prefix[:-1], {})
             module._load_from_state_dict(
-                state_dict, prefix, local_metadata, True, missing_keys, unexpected_keys, error_msgs)
+                state_dict,
+                prefix,
+                local_metadata,
+                True,
+                missing_keys,
+                unexpected_keys,
+                error_msgs,
+            )
             for name, child in module._modules.items():
                 if child is not None:
-                    load(child, prefix + name + '.')
+                    load(child, prefix + name + ".")
 
-        load(model, prefix='' if hasattr(model, 'bert') else 'bert.')
+        load(model, prefix="" if hasattr(model, "bert") else "bert.")
         model.missing_keys = missing_keys
         if len(missing_keys) > 0:
-            logger.info("Weights of {} not initialized from pretrained model: {}".format(
-                model.__class__.__name__, missing_keys))
+            logger.info(
+                "Weights of {} not initialized from pretrained model: {}".format(
+                    model.__class__.__name__, missing_keys
+                )
+            )
         if len(unexpected_keys) > 0:
-            logger.info("Weights from pretrained model not used in {}: {}".format(
-                model.__class__.__name__, unexpected_keys))
+            logger.info(
+                "Weights from pretrained model not used in {}: {}".format(
+                    model.__class__.__name__, unexpected_keys
+                )
+            )
         if len(error_msgs) > 0:
-            logger.info('\n'.join(error_msgs))
+            logger.info("\n".join(error_msgs))
         return model
 
 
@@ -856,7 +995,8 @@ class BertModel(PreTrainedBertModel):
     def rescale_some_parameters(self):
         for layer_id, layer in enumerate(self.encoder.layer):
             layer.attention.output.dense.weight.data.div_(
-                math.sqrt(2.0 * (layer_id + 1)))
+                math.sqrt(2.0 * (layer_id + 1))
+            )
             layer.output.dense.weight.data.div_(math.sqrt(2.0 * (layer_id + 1)))
 
     def get_extended_attention_mask(self, input_ids, token_type_ids, attention_mask):
@@ -883,21 +1023,39 @@ class BertModel(PreTrainedBertModel):
         # Since we are adding it to the raw scores before the softmax, this is
         # effectively the same as removing these entirely.
         extended_attention_mask = extended_attention_mask.to(
-            dtype=next(self.parameters()).dtype)  # fp16 compatibility
+            dtype=next(self.parameters()).dtype
+        )  # fp16 compatibility
         extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
         return extended_attention_mask
 
-    def forward(self, input_ids, token_type_ids=None, attention_mask=None, output_all_encoded_layers=True,
-                mask_qkv=None, task_idx=None, key_history=None, value_history=None, position_ids=None):
+    def forward(
+        self,
+        input_ids,
+        token_type_ids=None,
+        attention_mask=None,
+        output_all_encoded_layers=True,
+        mask_qkv=None,
+        task_idx=None,
+        key_history=None,
+        value_history=None,
+        position_ids=None,
+    ):
         extended_attention_mask = self.get_extended_attention_mask(
-            input_ids, token_type_ids, attention_mask)
+            input_ids, token_type_ids, attention_mask
+        )
 
         embedding_output = self.embeddings(
-            input_ids, token_type_ids, task_idx=task_idx, position_ids=position_ids)
-        encoded_layers = self.encoder(embedding_output, extended_attention_mask,
-                                      output_all_encoded_layers=output_all_encoded_layers,
-                                      mask_qkv=mask_qkv, seg_ids=token_type_ids,
-                                      key_history=key_history, value_history=value_history)
+            input_ids, token_type_ids, task_idx=task_idx, position_ids=position_ids
+        )
+        encoded_layers = self.encoder(
+            embedding_output,
+            extended_attention_mask,
+            output_all_encoded_layers=output_all_encoded_layers,
+            mask_qkv=mask_qkv,
+            seg_ids=token_type_ids,
+            key_history=key_history,
+            value_history=value_history,
+        )
         sequence_output = encoded_layers[-1]
         pooled_output = self.pooler(sequence_output)
         if not output_all_encoded_layers:
@@ -910,32 +1068,53 @@ class BertModelIncr(BertModel):
         super(BertModelIncr, self).__init__(config)
 
         if self.config.rel_pos_bins > 0:
-            self.rel_pos_bias = nn.Linear(self.config.rel_pos_bins, config.num_attention_heads, bias=False)
+            self.rel_pos_bias = nn.Linear(
+                self.config.rel_pos_bins, config.num_attention_heads, bias=False
+            )
         else:
             self.rel_pos_bias = None
 
-    def forward(self, input_ids, token_type_ids, position_ids, attention_mask, output_all_encoded_layers=True,
-                prev_embedding=None, prev_encoded_layers=None, mask_qkv=None, task_idx=None, rel_pos=None):
+    def forward(
+        self,
+        input_ids,
+        token_type_ids,
+        position_ids,
+        attention_mask,
+        output_all_encoded_layers=True,
+        prev_embedding=None,
+        prev_encoded_layers=None,
+        mask_qkv=None,
+        task_idx=None,
+        rel_pos=None,
+    ):
         extended_attention_mask = self.get_extended_attention_mask(
-            input_ids, token_type_ids, attention_mask)
+            input_ids, token_type_ids, attention_mask
+        )
 
         embedding_output = self.embeddings(
-            input_ids, token_type_ids, position_ids, task_idx=task_idx)
+            input_ids, token_type_ids, position_ids, task_idx=task_idx
+        )
 
         if self.rel_pos_bias is not None:
             # print("Rel pos size = %s" % str(rel_pos.size()))
-            rel_pos = F.one_hot(rel_pos, num_classes=self.config.rel_pos_bins).type_as(embedding_output)
+            rel_pos = F.one_hot(rel_pos, num_classes=self.config.rel_pos_bins).type_as(
+                embedding_output
+            )
             # print("Rel pos size = %s" % str(rel_pos.size()))
             rel_pos = self.rel_pos_bias(rel_pos).permute(0, 3, 1, 2)
             # print("Rel pos size = %s" % str(rel_pos.size()))
         else:
             rel_pos = None
-        encoded_layers = self.encoder(embedding_output,
-                                      extended_attention_mask,
-                                      output_all_encoded_layers=output_all_encoded_layers,
-                                      prev_embedding=prev_embedding,
-                                      prev_encoded_layers=prev_encoded_layers, mask_qkv=mask_qkv,
-                                      seg_ids=token_type_ids, rel_pos=rel_pos)
+        encoded_layers = self.encoder(
+            embedding_output,
+            extended_attention_mask,
+            output_all_encoded_layers=output_all_encoded_layers,
+            prev_embedding=prev_embedding,
+            prev_encoded_layers=prev_encoded_layers,
+            mask_qkv=mask_qkv,
+            seg_ids=token_type_ids,
+            rel_pos=rel_pos,
+        )
         sequence_output = encoded_layers[-1]
         pooled_output = self.pooler(sequence_output)
         if not output_all_encoded_layers:
@@ -992,23 +1171,41 @@ class BertForPreTraining(PreTrainedBertModel):
         super(BertForPreTraining, self).__init__(config)
         self.bert = BertModel(config)
         self.cls = BertPreTrainingHeads(
-            config, self.bert.embeddings.word_embeddings.weight)
+            config, self.bert.embeddings.word_embeddings.weight
+        )
         self.apply(self.init_bert_weights)
 
-    def forward(self, input_ids, token_type_ids=None, attention_mask=None, masked_lm_labels=None,
-                next_sentence_label=None, mask_qkv=None, task_idx=None):
-        sequence_output, pooled_output = self.bert(input_ids, token_type_ids, attention_mask,
-                                                   output_all_encoded_layers=False, mask_qkv=mask_qkv,
-                                                   task_idx=task_idx)
+    def forward(
+        self,
+        input_ids,
+        token_type_ids=None,
+        attention_mask=None,
+        masked_lm_labels=None,
+        next_sentence_label=None,
+        mask_qkv=None,
+        task_idx=None,
+    ):
+        sequence_output, pooled_output = self.bert(
+            input_ids,
+            token_type_ids,
+            attention_mask,
+            output_all_encoded_layers=False,
+            mask_qkv=mask_qkv,
+            task_idx=task_idx,
+        )
         prediction_scores, seq_relationship_score = self.cls(
-            sequence_output, pooled_output)
+            sequence_output, pooled_output
+        )
 
         if masked_lm_labels is not None and next_sentence_label is not None:
             loss_fct = CrossEntropyLoss(ignore_index=-1)
             masked_lm_loss = loss_fct(
-                prediction_scores.view(-1, self.config.vocab_size), masked_lm_labels.view(-1))
+                prediction_scores.view(-1, self.config.vocab_size),
+                masked_lm_labels.view(-1),
+            )
             next_sentence_loss = loss_fct(
-                seq_relationship_score.view(-1, 2), next_sentence_label.view(-1))
+                seq_relationship_score.view(-1, 2), next_sentence_label.view(-1)
+            )
             total_loss = masked_lm_loss + next_sentence_loss
             return total_loss
         else:
@@ -1019,8 +1216,11 @@ class BertPreTrainingPairTransform(nn.Module):
     def __init__(self, config):
         super(BertPreTrainingPairTransform, self).__init__()
         self.dense = nn.Linear(config.hidden_size * 2, config.hidden_size)
-        self.transform_act_fn = ACT2FN[config.hidden_act] \
-            if isinstance(config.hidden_act, str) else config.hidden_act
+        self.transform_act_fn = (
+            ACT2FN[config.hidden_act]
+            if isinstance(config.hidden_act, str)
+            else config.hidden_act
+        )
         # self.LayerNorm = BertLayerNorm(config.hidden_size, eps=1e-5)
 
     def forward(self, pair_x, pair_y):
@@ -1031,7 +1231,9 @@ class BertPreTrainingPairTransform(nn.Module):
         return hidden_states
 
 
-def relative_position_bucket(relative_position, bidirectional=True, num_buckets=32, max_distance=128):
+def relative_position_bucket(
+    relative_position, bidirectional=True, num_buckets=32, max_distance=128
+):
     """
     Adapted from Mesh Tensorflow:
     https://github.com/tensorflow/mesh/blob/0cb87fe07da627bf0b7e60475d59f95ed6b5be3d/mesh_tensorflow/transformer/transformer_layers.py#L593
@@ -1052,11 +1254,13 @@ def relative_position_bucket(relative_position, bidirectional=True, num_buckets=
 
     # The other half of the buckets are for logarithmically bigger bins in positions up to max_distance
     val_if_large = max_exact + (
-            torch.log(n.float() / max_exact) / math.log(max_distance /
-                                                        max_exact) * (num_buckets - max_exact)
+        torch.log(n.float() / max_exact)
+        / math.log(max_distance / max_exact)
+        * (num_buckets - max_exact)
     ).to(torch.long)
     val_if_large = torch.min(
-        val_if_large, torch.full_like(val_if_large, num_buckets - 1))
+        val_if_large, torch.full_like(val_if_large, num_buckets - 1)
+    )
 
     ret += torch.where(is_small, n, val_if_large)
     return ret
@@ -1065,16 +1269,30 @@ def relative_position_bucket(relative_position, bidirectional=True, num_buckets=
 class BertForSeq2SeqDecoder(PreTrainedBertModel):
     """refer to BertForPreTraining"""
 
-    def __init__(self, config, mask_word_id=0, num_labels=2, num_rel=0,
-                 search_beam_size=1, length_penalty=1.0, eos_id=0, sos_id=0,
-                 forbid_duplicate_ngrams=False, forbid_ignore_set=None, ngram_size=3, min_len=0, mode="s2s",
-                 pos_shift=False):
+    def __init__(
+        self,
+        config,
+        mask_word_id=0,
+        num_labels=2,
+        num_rel=0,
+        search_beam_size=1,
+        length_penalty=1.0,
+        eos_id=0,
+        sos_id=0,
+        forbid_duplicate_ngrams=False,
+        forbid_ignore_set=None,
+        ngram_size=3,
+        min_len=0,
+        mode="s2s",
+        pos_shift=False,
+    ):
         super(BertForSeq2SeqDecoder, self).__init__(config)
         self.bert = BertModelIncr(config)
         self.cls = BertPreTrainingHeads(
-            config, self.bert.embeddings.word_embeddings.weight, num_labels=num_labels)
+            config, self.bert.embeddings.word_embeddings.weight, num_labels=num_labels
+        )
         self.apply(self.init_bert_weights)
-        self.crit_mask_lm = nn.CrossEntropyLoss(reduction='none')
+        self.crit_mask_lm = nn.CrossEntropyLoss(reduction="none")
         self.crit_next_sent = nn.CrossEntropyLoss(ignore_index=-1)
         self.mask_word_id = mask_word_id
         self.num_labels = num_labels
@@ -1090,10 +1308,24 @@ class BertForSeq2SeqDecoder(PreTrainedBertModel):
         self.mode = mode
         self.pos_shift = pos_shift
 
-    def forward(self, input_ids, token_type_ids, position_ids, attention_mask, task_idx=None, mask_qkv=None):
+    def forward(
+        self,
+        input_ids,
+        token_type_ids,
+        position_ids,
+        attention_mask,
+        task_idx=None,
+        mask_qkv=None,
+    ):
         if self.search_beam_size > 1:
-            return self.beam_search(input_ids, token_type_ids, position_ids, attention_mask,
-                                    task_idx=task_idx, mask_qkv=mask_qkv)
+            return self.beam_search(
+                input_ids,
+                token_type_ids,
+                position_ids,
+                attention_mask,
+                task_idx=task_idx,
+                mask_qkv=mask_qkv,
+            )
 
         input_shape = list(input_ids.size())
         batch_size = input_shape[0]
@@ -1113,7 +1345,10 @@ class BertForSeq2SeqDecoder(PreTrainedBertModel):
         if self.bert.rel_pos_bias is not None:
             rel_pos_mat = position_ids.unsqueeze(-2) - position_ids.unsqueeze(-1)
             rel_pos = relative_position_bucket(
-                rel_pos_mat, num_buckets=self.config.rel_pos_bins, max_distance=self.config.max_rel_pos)
+                rel_pos_mat,
+                num_buckets=self.config.rel_pos_bins,
+                max_distance=self.config.max_rel_pos,
+            )
         else:
             rel_pos = None
 
@@ -1131,24 +1366,31 @@ class BertForSeq2SeqDecoder(PreTrainedBertModel):
                 start_pos = next_pos - curr_length
                 x_input_ids = torch.cat((curr_ids, mask_ids), dim=1)
 
-            curr_token_type_ids = token_type_ids[:, start_pos:next_pos + 1]
-            curr_attention_mask = attention_mask[:,
-                                  start_pos:next_pos + 1, :next_pos + 1]
-            curr_position_ids = position_ids[:, start_pos:next_pos + 1]
+            curr_token_type_ids = token_type_ids[:, start_pos : next_pos + 1]
+            curr_attention_mask = attention_mask[
+                :, start_pos : next_pos + 1, : next_pos + 1
+            ]
+            curr_position_ids = position_ids[:, start_pos : next_pos + 1]
 
             if rel_pos is not None:
-                cur_rel_pos = rel_pos[:, start_pos:next_pos + 1, :next_pos + 1]
+                cur_rel_pos = rel_pos[:, start_pos : next_pos + 1, : next_pos + 1]
             else:
                 cur_rel_pos = None
 
-            new_embedding, new_encoded_layers, _ = \
-                self.bert(x_input_ids, curr_token_type_ids, curr_position_ids, curr_attention_mask,
-                          output_all_encoded_layers=True, prev_embedding=prev_embedding,
-                          prev_encoded_layers=prev_encoded_layers, mask_qkv=mask_qkv, rel_pos=cur_rel_pos)
+            new_embedding, new_encoded_layers, _ = self.bert(
+                x_input_ids,
+                curr_token_type_ids,
+                curr_position_ids,
+                curr_attention_mask,
+                output_all_encoded_layers=True,
+                prev_embedding=prev_embedding,
+                prev_encoded_layers=prev_encoded_layers,
+                mask_qkv=mask_qkv,
+                rel_pos=cur_rel_pos,
+            )
 
             last_hidden = new_encoded_layers[-1][:, -1:, :]
-            prediction_scores, _ = self.cls(
-                last_hidden, None, task_idx=task_idx)
+            prediction_scores, _ = self.cls(last_hidden, None, task_idx=task_idx)
             _, max_ids = torch.max(prediction_scores, dim=-1)
             output_ids.append(max_ids)
 
@@ -1156,31 +1398,42 @@ class BertForSeq2SeqDecoder(PreTrainedBertModel):
                 if prev_embedding is None:
                     prev_embedding = new_embedding
                 else:
-                    prev_embedding = torch.cat(
-                        (prev_embedding, new_embedding), dim=1)
+                    prev_embedding = torch.cat((prev_embedding, new_embedding), dim=1)
                 if prev_encoded_layers is None:
                     prev_encoded_layers = [x for x in new_encoded_layers]
                 else:
-                    prev_encoded_layers = [torch.cat((x[0], x[1]), dim=1) for x in zip(
-                        prev_encoded_layers, new_encoded_layers)]
+                    prev_encoded_layers = [
+                        torch.cat((x[0], x[1]), dim=1)
+                        for x in zip(prev_encoded_layers, new_encoded_layers)
+                    ]
             else:
                 if prev_embedding is None:
                     prev_embedding = new_embedding[:, :-1, :]
                 else:
                     prev_embedding = torch.cat(
-                        (prev_embedding, new_embedding[:, :-1, :]), dim=1)
+                        (prev_embedding, new_embedding[:, :-1, :]), dim=1
+                    )
                 if prev_encoded_layers is None:
-                    prev_encoded_layers = [x[:, :-1, :]
-                                           for x in new_encoded_layers]
+                    prev_encoded_layers = [x[:, :-1, :] for x in new_encoded_layers]
                 else:
-                    prev_encoded_layers = [torch.cat((x[0], x[1][:, :-1, :]), dim=1)
-                                           for x in zip(prev_encoded_layers, new_encoded_layers)]
+                    prev_encoded_layers = [
+                        torch.cat((x[0], x[1][:, :-1, :]), dim=1)
+                        for x in zip(prev_encoded_layers, new_encoded_layers)
+                    ]
             curr_ids = max_ids
             next_pos += 1
 
         return torch.cat(output_ids, dim=1)
 
-    def beam_search(self, input_ids, token_type_ids, position_ids, attention_mask, task_idx=None, mask_qkv=None):
+    def beam_search(
+        self,
+        input_ids,
+        token_type_ids,
+        position_ids,
+        attention_mask,
+        task_idx=None,
+        mask_qkv=None,
+    ):
         input_shape = list(input_ids.size())
         batch_size = input_shape[0]
         input_length = input_shape[1]
@@ -1209,7 +1462,10 @@ class BertForSeq2SeqDecoder(PreTrainedBertModel):
         if self.bert.rel_pos_bias is not None:
             rel_pos_mat = position_ids.unsqueeze(-2) - position_ids.unsqueeze(-1)
             rel_pos = relative_position_bucket(
-                rel_pos_mat, num_buckets=self.config.rel_pos_bins, max_distance=self.config.max_rel_pos)
+                rel_pos_mat,
+                num_buckets=self.config.rel_pos_bins,
+                max_distance=self.config.max_rel_pos,
+            )
         else:
             rel_pos = None
         # print("Rel pos size = %s" % str(rel_pos.size()))
@@ -1228,26 +1484,33 @@ class BertForSeq2SeqDecoder(PreTrainedBertModel):
                 start_pos = next_pos - curr_length
                 x_input_ids = torch.cat((curr_ids, mask_ids), dim=1)
 
-            curr_token_type_ids = token_type_ids[:, start_pos:next_pos + 1]
-            curr_attention_mask = attention_mask[:, start_pos:next_pos + 1, :next_pos + 1]
-            curr_position_ids = position_ids[:, start_pos:next_pos + 1]
+            curr_token_type_ids = token_type_ids[:, start_pos : next_pos + 1]
+            curr_attention_mask = attention_mask[
+                :, start_pos : next_pos + 1, : next_pos + 1
+            ]
+            curr_position_ids = position_ids[:, start_pos : next_pos + 1]
             if rel_pos is not None:
-                cur_rel_pos = rel_pos[:, start_pos:next_pos + 1, :next_pos + 1]
+                cur_rel_pos = rel_pos[:, start_pos : next_pos + 1, : next_pos + 1]
             else:
                 cur_rel_pos = None
-            new_embedding, new_encoded_layers, _ = \
-                self.bert(x_input_ids, curr_token_type_ids, curr_position_ids, curr_attention_mask,
-                          output_all_encoded_layers=True, prev_embedding=prev_embedding,
-                          prev_encoded_layers=prev_encoded_layers, mask_qkv=mask_qkv, rel_pos=cur_rel_pos)
+            new_embedding, new_encoded_layers, _ = self.bert(
+                x_input_ids,
+                curr_token_type_ids,
+                curr_position_ids,
+                curr_attention_mask,
+                output_all_encoded_layers=True,
+                prev_embedding=prev_embedding,
+                prev_encoded_layers=prev_encoded_layers,
+                mask_qkv=mask_qkv,
+                rel_pos=cur_rel_pos,
+            )
 
             last_hidden = new_encoded_layers[-1][:, -1:, :]
-            prediction_scores, _ = self.cls(
-                last_hidden, None, task_idx=task_idx)
-            log_scores = torch.nn.functional.log_softmax(
-                prediction_scores, dim=-1)
-            
+            prediction_scores, _ = self.cls(last_hidden, None, task_idx=task_idx)
+            log_scores = torch.nn.functional.log_softmax(prediction_scores, dim=-1)
+
             if forbid_word_mask is not None:
-                log_scores += (forbid_word_mask * -10000.0)
+                log_scores += forbid_word_mask * -10000.0
             if self.min_len and (next_pos - input_length + 1 <= self.min_len):
                 log_scores[:, :, self.eos_id].fill_(-10000.0)
             kk_scores, kk_ids = torch.topk(log_scores, k=K)
@@ -1256,10 +1519,10 @@ class BertForSeq2SeqDecoder(PreTrainedBertModel):
                 back_ptrs = torch.zeros(batch_size, K, dtype=torch.long)
                 k_scores = torch.reshape(kk_scores, [batch_size, K])
             else:
-                last_eos = torch.reshape(
-                    beam_masks[-1], [batch_size * K, 1, 1])
+                last_eos = torch.reshape(beam_masks[-1], [batch_size * K, 1, 1])
                 last_seq_scores = torch.reshape(
-                    total_scores[-1], [batch_size * K, 1, 1])
+                    total_scores[-1], [batch_size * K, 1, 1]
+                )
                 kk_scores += last_eos * (-10000.0) + last_seq_scores
                 kk_scores = torch.reshape(kk_scores, [batch_size, K * K])
                 k_scores, k_ids = torch.topk(kk_scores, k=K)
@@ -1289,47 +1552,50 @@ class BertForSeq2SeqDecoder(PreTrainedBertModel):
                 x_rank = len(x_shape) + 1
                 assert x_rank >= 2
                 if id_rank < x_rank:
-                    ids = torch.reshape(
-                        ids, id_shape + [1] * (x_rank - id_rank))
+                    ids = torch.reshape(ids, id_shape + [1] * (x_rank - id_rank))
                     ids = ids.expand(id_shape + x_shape[1:])
                 y = torch.gather(x, 1, ids)
                 y = torch.reshape(y, x_shape)
                 return y
 
-            is_first = (prev_embedding is None)
+            is_first = prev_embedding is None
 
             if self.pos_shift:
                 if prev_embedding is None:
                     prev_embedding = first_expand(new_embedding)
                 else:
-                    prev_embedding = torch.cat(
-                        (prev_embedding, new_embedding), dim=1)
-                    prev_embedding = select_beam_items(
-                        prev_embedding, back_ptrs)
+                    prev_embedding = torch.cat((prev_embedding, new_embedding), dim=1)
+                    prev_embedding = select_beam_items(prev_embedding, back_ptrs)
                 if prev_encoded_layers is None:
-                    prev_encoded_layers = [first_expand(
-                        x) for x in new_encoded_layers]
+                    prev_encoded_layers = [first_expand(x) for x in new_encoded_layers]
                 else:
-                    prev_encoded_layers = [torch.cat((x[0], x[1]), dim=1) for x in zip(
-                        prev_encoded_layers, new_encoded_layers)]
-                    prev_encoded_layers = [select_beam_items(
-                        x, back_ptrs) for x in prev_encoded_layers]
+                    prev_encoded_layers = [
+                        torch.cat((x[0], x[1]), dim=1)
+                        for x in zip(prev_encoded_layers, new_encoded_layers)
+                    ]
+                    prev_encoded_layers = [
+                        select_beam_items(x, back_ptrs) for x in prev_encoded_layers
+                    ]
             else:
                 if prev_embedding is None:
                     prev_embedding = first_expand(new_embedding[:, :-1, :])
                 else:
                     prev_embedding = torch.cat(
-                        (prev_embedding, new_embedding[:, :-1, :]), dim=1)
-                    prev_embedding = select_beam_items(
-                        prev_embedding, back_ptrs)
+                        (prev_embedding, new_embedding[:, :-1, :]), dim=1
+                    )
+                    prev_embedding = select_beam_items(prev_embedding, back_ptrs)
                 if prev_encoded_layers is None:
-                    prev_encoded_layers = [first_expand(
-                        x[:, :-1, :]) for x in new_encoded_layers]
+                    prev_encoded_layers = [
+                        first_expand(x[:, :-1, :]) for x in new_encoded_layers
+                    ]
                 else:
-                    prev_encoded_layers = [torch.cat((x[0], x[1][:, :-1, :]), dim=1)
-                                           for x in zip(prev_encoded_layers, new_encoded_layers)]
-                    prev_encoded_layers = [select_beam_items(
-                        x, back_ptrs) for x in prev_encoded_layers]
+                    prev_encoded_layers = [
+                        torch.cat((x[0], x[1][:, :-1, :]), dim=1)
+                        for x in zip(prev_encoded_layers, new_encoded_layers)
+                    ]
+                    prev_encoded_layers = [
+                        select_beam_items(x, back_ptrs) for x in prev_encoded_layers
+                    ]
 
             curr_ids = torch.reshape(k_ids, [batch_size * K, 1])
 
@@ -1356,15 +1622,18 @@ class BertForSeq2SeqDecoder(PreTrainedBertModel):
                     for b in range(batch_size):
                         for k in range(K):
                             new_partial_seqs.append(
-                                partial_seqs[ptrs[b][k] + b * K] + [wids[b][k]])
+                                partial_seqs[ptrs[b][k] + b * K] + [wids[b][k]]
+                            )
                     partial_seqs = new_partial_seqs
 
                 def get_dup_ngram_candidates(seq, n):
                     cands = set()
                     if len(seq) < n:
                         return []
-                    tail = seq[-(n - 1):]
-                    if self.forbid_ignore_set and any(tk in self.forbid_ignore_set for tk in tail):
+                    tail = seq[-(n - 1) :]
+                    if self.forbid_ignore_set and any(
+                        tk in self.forbid_ignore_set for tk in tail
+                    ):
                         return []
                     for i in range(len(seq) - (n - 1)):
                         mismatch = False
@@ -1373,29 +1642,33 @@ class BertForSeq2SeqDecoder(PreTrainedBertModel):
                                 mismatch = True
                                 break
                         if (not mismatch) and not (
-                                self.forbid_ignore_set and (seq[i + n - 1] in self.forbid_ignore_set)):
+                            self.forbid_ignore_set
+                            and (seq[i + n - 1] in self.forbid_ignore_set)
+                        ):
                             cands.add(seq[i + n - 1])
                     return list(sorted(cands))
 
                 if len(partial_seqs[0]) >= self.ngram_size:
                     dup_cands = []
                     for seq in partial_seqs:
-                        dup_cands.append(
-                            get_dup_ngram_candidates(seq, self.ngram_size))
+                        dup_cands.append(get_dup_ngram_candidates(seq, self.ngram_size))
                     if max(len(x) for x in dup_cands) > 0:
                         if buf_matrix is None:
                             vocab_size = list(log_scores.size())[-1]
                             buf_matrix = np.zeros(
-                                (batch_size * K, vocab_size), dtype=float)
+                                (batch_size * K, vocab_size), dtype=float
+                            )
                         else:
                             buf_matrix.fill(0)
                         for bk, cands in enumerate(dup_cands):
                             for i, wid in enumerate(cands):
                                 buf_matrix[bk, wid] = 1.0
                         forbid_word_mask = torch.tensor(
-                            buf_matrix, dtype=log_scores.dtype)
+                            buf_matrix, dtype=log_scores.dtype
+                        )
                         forbid_word_mask = torch.reshape(
-                            forbid_word_mask, [batch_size * K, 1, vocab_size]).cuda()
+                            forbid_word_mask, [batch_size * K, 1, vocab_size]
+                        ).cuda()
                     else:
                         forbid_word_mask = None
             next_pos += 1
@@ -1405,15 +1678,15 @@ class BertForSeq2SeqDecoder(PreTrainedBertModel):
         step_ids = [x.tolist() for x in step_ids]
         step_back_ptrs = [x.tolist() for x in step_back_ptrs]
         # back tracking
-        traces = {'pred_seq': [], 'scores': [], 'wids': [], 'ptrs': []}
+        traces = {"pred_seq": [], "scores": [], "wids": [], "ptrs": []}
         for b in range(batch_size):
             # [(beam,)]
             scores = [x[b] for x in total_scores]
             wids_list = [x[b] for x in step_ids]
             ptrs = [x[b] for x in step_back_ptrs]
-            traces['scores'].append(scores)
-            traces['wids'].append(wids_list)
-            traces['ptrs'].append(ptrs)
+            traces["scores"].append(scores)
+            traces["wids"].append(wids_list)
+            traces["ptrs"].append(ptrs)
             # first we need to find the eos frame where all symbols are eos
             # any frames after the eos frame are invalid
             last_frame_id = len(scores) - 1
@@ -1430,21 +1703,20 @@ class BertForSeq2SeqDecoder(PreTrainedBertModel):
                     if wid == self.eos_id or fid == last_frame_id:
                         s = scores[fid][i]
                         if self.length_penalty > 0:
-                            s /= math.pow((5 + fid + 1) / 6.0,
-                                          self.length_penalty)
+                            s /= math.pow((5 + fid + 1) / 6.0, self.length_penalty)
                         if s > max_score:
                             max_score = s
                             frame_id = fid
                             pos_in_frame = i
             if frame_id == -1:
-                traces['pred_seq'].append([0])
+                traces["pred_seq"].append([0])
             else:
                 seq = [wids_list[frame_id][pos_in_frame]]
                 for fid in range(frame_id, 0, -1):
                     pos_in_frame = ptrs[fid][pos_in_frame]
                     seq.append(wids_list[fid - 1][pos_in_frame])
                 seq.reverse()
-                traces['pred_seq'].append(seq)
+                traces["pred_seq"].append(seq)
 
         def _pad_sequence(sequences, max_len, padding_value=0):
             trailing_dims = sequences[0].size()[1:]
@@ -1458,12 +1730,13 @@ class BertForSeq2SeqDecoder(PreTrainedBertModel):
             return out_tensor
 
         # convert to tensors for DataParallel
-        for k in ('pred_seq', 'scores', 'wids', 'ptrs'):
+        for k in ("pred_seq", "scores", "wids", "ptrs"):
             ts_list = traces[k]
             if not isinstance(ts_list[0], torch.Tensor):
-                dt = torch.float if k == 'scores' else torch.long
+                dt = torch.float if k == "scores" else torch.long
                 ts_list = [torch.tensor(it, dtype=dt) for it in ts_list]
-            traces[k] = _pad_sequence(
-                ts_list, output_length, padding_value=0).to(input_ids.device)
+            traces[k] = _pad_sequence(ts_list, output_length, padding_value=0).to(
+                input_ids.device
+            )
 
         return traces

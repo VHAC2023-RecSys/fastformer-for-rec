@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 import sys
 import traceback
 
+
 def get_files(dirname, filename_pat="*", recursive=False):
     if not tf.io.gfile.exists(dirname):
         logging.warning(f"no file in {dirname} !")
@@ -26,12 +27,9 @@ def get_files(dirname, filename_pat="*", recursive=False):
     return files
 
 
-def get_worker_files(dirnames,
-                     worker_rank,
-                     world_size,
-                     filename_pat="*",
-                     shuffle=False,
-                     seed=0):
+def get_worker_files(
+    dirnames, worker_rank, world_size, filename_pat="*", shuffle=False, seed=0
+):
     """Get file paths belong to one worker."""
     all_files = []
 
@@ -58,7 +56,9 @@ class StreamReader:
         path_len = len(data_paths)
 
         dataset = tf.data.Dataset.list_files(data_paths, shuffle=False).interleave(
-            lambda x: tf.data.TextLineDataset(x).map(lambda y: tf.strings.join([y, x], separator="\t")),
+            lambda x: tf.data.TextLineDataset(x).map(
+                lambda y: tf.strings.join([y, x], separator="\t")
+            ),
             cycle_length=path_len,
             block_length=batch_size,
             # num_parallel_calls=min(path_len, batch_size),
@@ -68,7 +68,6 @@ class StreamReader:
         dataset = dataset.prefetch(3)
         self.next_batch = dataset.make_one_shot_iterator().get_next()
         self.session = None
-
 
     def reset(self):
         # print(f"StreamReader reset(), {self.session}, pid:{threading.currentThread()}")
@@ -111,7 +110,9 @@ class StreamSampler:
             seed=shuffle_seed,
         )
         self.data_paths = data_paths
-        self.stream_reader = StreamReader(data_paths, batch_size, enable_shuffle, shuffle_buffer_size)
+        self.stream_reader = StreamReader(
+            data_paths, batch_size, enable_shuffle, shuffle_buffer_size
+        )
 
     def __iter__(self):
         self.stream_reader.reset()
@@ -121,8 +122,11 @@ class StreamSampler:
         """Implement iterator interface."""
         # logging.info(f"[StreamSampler] __next__")
         next_batch = self.stream_reader.get_next()
-        if not isinstance(next_batch, np.ndarray) and not isinstance(
-                next_batch, tuple) and not isinstance(next_batch, bytes):
+        if (
+            not isinstance(next_batch, np.ndarray)
+            and not isinstance(next_batch, tuple)
+            and not isinstance(next_batch, bytes)
+        ):
             raise StopIteration
         # print(next_batch.shape)
         return next_batch
@@ -144,8 +148,11 @@ class StreamReaderForSpeedy:
         """Implement iterator interface."""
         # logging.info(f"[StreamSampler] __next__")
         next_batch = self.stream_reader.get_next()
-        if not isinstance(next_batch, np.ndarray) and not isinstance(
-                next_batch, tuple) and not isinstance(next_batch, bytes):
+        if (
+            not isinstance(next_batch, np.ndarray)
+            and not isinstance(next_batch, tuple)
+            and not isinstance(next_batch, bytes)
+        ):
             raise StopIteration
         return next_batch
 
@@ -154,15 +161,11 @@ class StreamReaderForSpeedy:
 
 
 class StreamSamplerTrainForSpeedyRec:
-    def __init__(
-        self,
-        data_files,
-        local_rank
-    ):
-        '''
+    def __init__(self, data_files, local_rank):
+        """
         Args:
             data_files(manager.list()): the files storage train data
-        '''
+        """
         files = []
         for i in range(local_rank, len(data_files), 8):
             files.append(data_files[i])
@@ -193,12 +196,12 @@ class StreamSamplerTrainForSpeedyRec:
 
     def _generate_batch(self):
         while True:
-            if len(self.data_files)>0:
+            if len(self.data_files) > 0:
                 path = self.data_files.pop(0)
                 with tf.io.gfile.GFile(path, "r") as f:
                     market = path.split("/")[-2]
                     for line in f:
-                        yield line.strip('\n'), market
+                        yield line.strip("\n"), market
             else:
                 self.end = True
                 break
@@ -209,7 +212,7 @@ class StreamSamplerTrainForSpeedyRec:
         return self
 
     def __next__(self):
-        if self.sampler and  self.aval_count == 0 and self.end == True:
+        if self.sampler and self.aval_count == 0 and self.end == True:
             raise StopIteration
         next_batch = self.outputs.get()
         self.outputs.task_done()
@@ -228,8 +231,6 @@ class StreamSamplerTrainForSpeedyRec:
         self.sampler = None
 
 
-
-
 class StreamReaderTest(StreamReader):
     def __init__(self, data_paths, batch_size, shuffle, shuffle_buffer_size=1000):
         tf.config.experimental.set_visible_devices([], device_type="GPU")
@@ -237,7 +238,9 @@ class StreamReaderTest(StreamReader):
         path_len = len(data_paths)
         # logging.info(f"[StreamReader] path_len:{path_len}, paths: {data_paths}")
         dataset = tf.data.Dataset.list_files(data_paths).interleave(
-            lambda x: tf.data.TextLineDataset(x).map(lambda y: tf.strings.join([y, x], separator="\t")),
+            lambda x: tf.data.TextLineDataset(x).map(
+                lambda y: tf.strings.join([y, x], separator="\t")
+            ),
             cycle_length=path_len,
             block_length=batch_size,
             num_parallel_calls=min(path_len, batch_size),
@@ -245,7 +248,7 @@ class StreamReaderTest(StreamReader):
 
         # if shuffle:
         #     dataset = dataset.shuffle(shuffle_buffer_size, reshuffle_each_iteration=True)
-        
+
         dataset = dataset.batch(batch_size)
         dataset = dataset.prefetch(1)
         self.next_batch = dataset.make_one_shot_iterator().get_next()
@@ -273,5 +276,6 @@ class StreamSamplerTest(StreamSampler):
             seed=shuffle_seed,
         )
         self.data_paths = data_paths
-        self.stream_reader = StreamReaderTest(data_paths, batch_size, enable_shuffle, shuffle_buffer_size)
-
+        self.stream_reader = StreamReaderTest(
+            data_paths, batch_size, enable_shuffle, shuffle_buffer_size
+        )

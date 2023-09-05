@@ -8,12 +8,11 @@ def parse_args():
     parser.add_argument(
         "--root_data_dir",
         type=str,
-        default=
-        "/ads-nfs/t-shxiao/cache/data/Mind_large/",
+        default="/ads-nfs/t-shxiao/cache/data/Mind_large/",
     )
 
     parser.add_argument("--filename_pat", type=str, default="ProtoBuf_*.tsv")
-    parser.add_argument("--model_dir", type=str, default='./saved_models/')
+    parser.add_argument("--model_dir", type=str, default="./saved_models/")
     parser.add_argument("--npratio", type=int, default=1)
     parser.add_argument("--enable_gpu", type=utils.str2bool, default=True)
     parser.add_argument("--enable_shuffle", type=utils.str2bool, default=True)
@@ -28,9 +27,10 @@ def parse_args():
     parser.add_argument(
         "--news_attributes",
         type=str,
-        nargs='+',
-        default=['title', 'abstract'],
-        choices=['title', 'abstract', 'body', 'category', 'domain', 'subcategory'])
+        nargs="+",
+        default=["title", "abstract"],
+        choices=["title", "abstract", "body", "category", "domain", "subcategory"],
+    )
 
     parser.add_argument("--num_words_title", type=int, default=32)
     parser.add_argument("--num_words_abstract", type=int, default=50)
@@ -74,31 +74,48 @@ def parse_args():
         "--load_ckpt_name",
         type=str,
         default=None,
-        help="choose which ckpt to load and test"
+        help="choose which ckpt to load and test",
     )
     # share
     parser.add_argument("--title_share_encoder", type=utils.str2bool, default=False)
 
     # Turing
-    parser.add_argument("--pretreained_model", type=str, default='unilm', choices=['unilm', 'others'])
-    parser.add_argument("--pretrained_model_path", type=str, default='../tnlr')
-    parser.add_argument("--config-name", type=str, default='unilm2-base-uncased-config.json')
-    parser.add_argument("--model_name_or_path", type=str, default='unilm2-base-uncased.bin')
-    parser.add_argument("--tokenizer_name", type=str, default='unilm2-base-uncased-vocab.txt')
+    parser.add_argument(
+        "--pretreained_model", type=str, default="unilm", choices=["unilm", "others"]
+    )
+    parser.add_argument("--pretrained_model_path", type=str, default="../tnlr")
+    parser.add_argument(
+        "--config-name", type=str, default="unilm2-base-uncased-config.json"
+    )
+    parser.add_argument(
+        "--model_name_or_path", type=str, default="unilm2-base-uncased.bin"
+    )
+    parser.add_argument(
+        "--tokenizer_name", type=str, default="unilm2-base-uncased-vocab.txt"
+    )
 
     parser.add_argument("--num_hidden_layers", type=int, default=-1)
 
-    parser.add_argument("--use_pretrain_news_encoder", type=utils.str2bool, default=False)
-    parser.add_argument("--freeze_pretrain_news_encoder", type=utils.str2bool, default=False)
+    parser.add_argument(
+        "--use_pretrain_news_encoder", type=utils.str2bool, default=False
+    )
+    parser.add_argument(
+        "--freeze_pretrain_news_encoder", type=utils.str2bool, default=False
+    )
 
-    #new parameters for speedyrec
+    # new parameters for speedyrec
     parser.add_argument("--warmup", type=utils.str2bool, default=False)
     parser.add_argument("--world_size", type=int, default=-1)
     parser.add_argument("--enable_prefetch_stream", type=utils.str2bool, default=True)
     parser.add_argument("--pretrain_lr", type=float, default=1e-4)
-    parser.add_argument("--beta_for_cache", type=float, help='the hyper parameter for the growth rate of lookup  probability', default=0.002)
-    parser.add_argument("--max_step_in_cache", type=int, help='\gamma', default=20)
-    parser.add_argument("--savename", type=str, default='speedy')
+    parser.add_argument(
+        "--beta_for_cache",
+        type=float,
+        help="the hyper parameter for the growth rate of lookup  probability",
+        default=0.002,
+    )
+    parser.add_argument("--max_step_in_cache", type=int, help="\gamma", default=20)
+    parser.add_argument("--savename", type=str, default="speedy")
     parser.add_argument("--warmup_step", type=int, default=2000)
     parser.add_argument("--schedule_step", type=int, default=30000)
     parser.add_argument("--test_steps", type=int, default=1000000)
@@ -107,6 +124,3 @@ def parse_args():
     args = parser.parse_args()
     logging.info(args)
     return args
-
-
-

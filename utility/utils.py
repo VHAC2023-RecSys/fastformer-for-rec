@@ -13,11 +13,17 @@ from models.tnlrv3.modeling import TuringNLRv3ForSequenceClassification
 from models.tnlrv3.configuration_tnlrv3 import TuringNLRv3Config
 from models.tnlrv3.tokenization_tnlrv3 import TuringNLRv3Tokenizer
 from models.fast import Fastformer
+
 MODEL_CLASSES = {
     # 'unilm': (TuringNLRv3Config, Fastformer, TuringNLRv3Tokenizer),
-    'unilm': (TuringNLRv3Config, TuringNLRv3ForSequenceClassification, TuringNLRv3Tokenizer),
-    'others': (AutoConfig, AutoModel, AutoTokenizer)
+    "unilm": (
+        TuringNLRv3Config,
+        TuringNLRv3ForSequenceClassification,
+        TuringNLRv3Tokenizer,
+    ),
+    "others": (AutoConfig, AutoModel, AutoTokenizer),
 }
+
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -29,6 +35,7 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError("Boolean value expected.")
 
+
 def setuplogger():
     root = logging.getLogger()
     # logging.basicConfig(format="[%(levelname)s %(asctime)s] %(message)s", level=logging.INFO)
@@ -37,7 +44,7 @@ def setuplogger():
     handler.setLevel(logging.INFO)
     formatter = logging.Formatter("[%(levelname)s %(asctime)s] %(message)s")
     handler.setFormatter(formatter)
-    if (root.hasHandlers()):
+    if root.hasHandlers():
         root.handlers.clear()
     root.addHandler(handler)
 
@@ -47,13 +54,18 @@ def dump_args(args):
         if not arg.startswith("_"):
             logging.info(f"args[{arg}]={getattr(args, arg)}")
 
+
 def init_process(rank, world_size):
-    os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12365'
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "12365"
 
     # initialize the process group
     os.environ["RANK"] = str(rank)
-    dist.init_process_group("nccl", rank=rank, world_size=world_size, )
+    dist.init_process_group(
+        "nccl",
+        rank=rank,
+        world_size=world_size,
+    )
     torch.cuda.set_device(rank)
 
     # Explicitly setting seed to make sure that models created in two processes
@@ -70,8 +82,8 @@ def cleanup_process():
 def get_device():
     if torch.cuda.is_available():
         local_rank = os.environ.get("RANK", 0)
-        return torch.device('cuda', int(local_rank))
-    return torch.device('cpu')
+        return torch.device("cuda", int(local_rank))
+    return torch.device("cpu")
 
 
 def get_barrier(dist_training):
@@ -97,25 +109,30 @@ def only_on_main_process(local_rank, barrier):
     if local_rank == 0:
         barrier()
 
+
 def warmup_linear(args, step):
     if step <= args.warmup_step:
-        return step/args.warmup_step
-    return max(1e-4,(args.schedule_step-step)/(args.schedule_step-args.warmup_step))
+        return step / args.warmup_step
+    return max(
+        1e-4, (args.schedule_step - step) / (args.schedule_step - args.warmup_step)
+    )
+
 
 def lr_schedule(init_lr, step, args):
     if args.warmup:
-        return warmup_linear(args, step)*init_lr
+        return warmup_linear(args, step) * init_lr
     else:
         return init_lr
+
 
 def init_world_size(world_size):
     assert world_size <= torch.cuda.device_count()
     return torch.cuda.device_count() if world_size == -1 else world_size
 
+
 def check_args_environment(args):
     if not torch.cuda.is_available():
-        logging.warning("Cuda is not available, " \
-                        "related options will be disabled")
+        logging.warning("Cuda is not available, " "related options will be disabled")
     args.enable_gpu = torch.cuda.is_available() & args.enable_gpu
     return args
 
@@ -124,7 +141,9 @@ class timer:
     """
     Time context manager for code block
     """
+
     from time import time
+
     NAMED_TAPE = {}
 
     def __init__(self, name, **kwargs):
@@ -139,5 +158,3 @@ class timer:
     def __exit__(self, exc_type, exc_val, exc_tb):
         timer.NAMED_TAPE[self.name] += timer.time() - self.start
         print(self.name, timer.NAMED_TAPE[self.name])
-
-

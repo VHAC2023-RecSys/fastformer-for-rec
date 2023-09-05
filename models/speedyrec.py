@@ -4,7 +4,8 @@ from transformers import BertConfig
 from utility.utils import MODEL_CLASSES
 from models.fast import Fastformer
 from transformers.modeling_bert import BertModel
-ffconfig = BertConfig.from_json_file('models/ffconfig.json')
+
+ffconfig = BertConfig.from_json_file("models/ffconfig.json")
 
 
 class AttentionPooling(nn.Module):
@@ -35,29 +36,34 @@ class TextEncoder(nn.Module):
         super(TextEncoder, self).__init__()
         self.args = args
 
-        config_class, model_class, tokenizer_class = MODEL_CLASSES[args.pretreained_model]
-        self.config = config_class.from_pretrained(args.pretrained_model_path, output_hidden_states=True)
+        config_class, model_class, tokenizer_class = MODEL_CLASSES[
+            args.pretreained_model
+        ]
+        self.config = config_class.from_pretrained(
+            args.pretrained_model_path, output_hidden_states=True
+        )
 
-        if args.num_hidden_layers != -1: self.config.num_hidden_layers = args.num_hidden_layers
-        if 'speedymind_ckpts' in args.pretrained_model_path:
+        if args.num_hidden_layers != -1:
+            self.config.num_hidden_layers = args.num_hidden_layers
+        if "speedymind_ckpts" in args.pretrained_model_path:
             self.unicoder = model_class(config=self.config)
         else:
             self.unicoder = model_class.from_pretrained(
-                args.pretrained_model_path,
-                config=self.config)
+                args.pretrained_model_path, config=self.config
+            )
 
         self.drop_layer = nn.Dropout(p=args.drop_rate)
-        self.fc = nn.Linear(
-            self.config.hidden_size,
-            args.news_dim)
+        self.fc = nn.Linear(self.config.hidden_size, args.news_dim)
 
-        if 'abstract' in self.args.news_attributes:
+        if "abstract" in self.args.news_attributes:
             self.text_att = AttentionPooling(
-                args.news_dim, args.news_dim,
-                drop_rate=args.drop_rate)
+                args.news_dim, args.news_dim, drop_rate=args.drop_rate
+            )
             self.sent_att = AttentionPooling(
-                self.config.hidden_size, self.config.hidden_size,
-                drop_rate=args.drop_rate)
+                self.config.hidden_size,
+                self.config.hidden_size,
+                drop_rate=args.drop_rate,
+            )
 
     def sent_encode(self, inputs):
         batch_size, num_words = inputs.shape
@@ -67,7 +73,7 @@ class TextEncoder(nn.Module):
 
         sent_vec = self.unicoder(text_ids, text_attmask)[0]  # B L D
         # sent_vec = self.unicoder(text_ids, text_attmask)
-        if 'abstract' in self.args.news_attributes:
+        if "abstract" in self.args.news_attributes:
             sent_vec = self.sent_att(sent_vec, text_attmask)
         else:
             sent_vec = torch.mean(sent_vec, dim=1)
@@ -81,14 +87,21 @@ class TextEncoder(nn.Module):
         title_vec = self.sent_encode(title)
         vecs.append(title_vec)
 
-        if 'abstract' in self.args.news_attributes:
-            abs = torch.narrow(inputs, 1, self.args.num_words_title * 2, self.args.num_words_abstract * 2)
+        if "abstract" in self.args.news_attributes:
+            abs = torch.narrow(
+                inputs,
+                1,
+                self.args.num_words_title * 2,
+                self.args.num_words_abstract * 2,
+            )
             abs_vec = self.sent_encode(abs)
             vecs.append(abs_vec)
         if len(vecs) == 1:
             return vecs[0]
         else:
-            vecs = torch.cat(vecs, dim=-1).view(-1, len(vecs), self.args.news_dim)  # B 2 D
+            vecs = torch.cat(vecs, dim=-1).view(
+                -1, len(vecs), self.args.news_dim
+            )  # B 2 D
             final_news_vector = self.text_att(vecs)
             return final_news_vector
 
@@ -97,23 +110,19 @@ class UserEncoder(nn.Module):
     def __init__(self, args, text_encoder=None):
         super(UserEncoder, self).__init__()
         self.args = args
-        self.news_pad_doc = nn.Parameter(torch.empty(1, args.news_dim).uniform_(-1, 1)).type(torch.FloatTensor)
+        self.news_pad_doc = nn.Parameter(
+            torch.empty(1, args.news_dim).uniform_(-1, 1)
+        ).type(torch.FloatTensor)
         self.dropout = nn.Dropout(p=args.drop_rate)
         self.news_attn_pool = AttentionPooling(
-            args.news_dim, args.news_dim,
-            drop_rate=args.drop_rate)
+            args.news_dim, args.news_dim, drop_rate=args.drop_rate
+        )
 
         self.encoder = Fastformer(ffconfig)
         # self.encoder = BertModel(ffconfig)
 
     def get_user_log_vec(
-            self,
-            sent_vecs,
-            log_mask,
-            log_length,
-            attn_pool,
-            pad_doc,
-            use_mask=True
+        self, sent_vecs, log_mask, log_length, attn_pool, pad_doc, use_mask=True
     ):
         bz = sent_vecs.shape[0]
         # if use_mask:
@@ -127,13 +136,14 @@ class UserEncoder(nn.Module):
         user_log_vecs = self.encoder(sent_vecs, log_mask)
         return user_log_vecs
 
-    def forward(self, user_news_vecs, log_mask,
-                user_log_mask=False):
+    def forward(self, user_news_vecs, log_mask, user_log_mask=False):
         user_vec = self.get_user_log_vec(
-            user_news_vecs, log_mask,
+            user_news_vecs,
+            log_mask,
             self.args.user_log_length,
-            self.news_attn_pool, self.news_pad_doc,
-            user_log_mask
+            self.news_attn_pool,
+            self.news_pad_doc,
+            user_log_mask,
         )
         return user_vec
 
@@ -144,18 +154,21 @@ class MLNR(nn.Module):
 
         self.args = args
         self.news_encoder = TextEncoder(args)
-        self.user_encoder = UserEncoder(args, self.news_encoder if self.args.title_share_encoder else None)
+        self.user_encoder = UserEncoder(
+            args, self.news_encoder if self.args.title_share_encoder else None
+        )
 
         self.loss_fn = nn.CrossEntropyLoss()
 
-    def forward(self,
-                news_vecs,  # the index of embedding from cache
-                hist_sequence,  # user num  history lenght
-                hist_sequence_mask,  # user num  history lenght
-                candidate_inx,  # user num  history lenght-1  npratio
-                labels,
-                compute_loss=True
-                ):
+    def forward(
+        self,
+        news_vecs,  # the index of embedding from cache
+        hist_sequence,  # user num  history lenght
+        hist_sequence_mask,  # user num  history lenght
+        candidate_inx,  # user num  history lenght-1  npratio
+        labels,
+        compute_loss=True,
+    ):
         """
         Args:
             segments: input_ids of segments
@@ -173,17 +186,23 @@ class MLNR(nn.Module):
             loss: training loss
             encode_vecs: encoded news vecs, which will be storaged into cache
         """
-        reshape_candidate = candidate_inx.view(-1, )
+        reshape_candidate = candidate_inx.view(
+            -1,
+        )
         candidate_vec = news_vecs.index_select(0, reshape_candidate)
-        candidate_vec = candidate_vec.view(candidate_inx.size(0), candidate_inx.size(1), -1)  # B N D
+        candidate_vec = candidate_vec.view(
+            candidate_inx.size(0), candidate_inx.size(1), -1
+        )  # B N D
 
-        reshape_hist = hist_sequence.view(-1, )
+        reshape_hist = hist_sequence.view(
+            -1,
+        )
         log_vec = news_vecs.index_select(0, reshape_hist)
-        log_vec = log_vec.view(hist_sequence.size(0), hist_sequence.size(1), -1)  # batch_size, log_length, news_dim
+        log_vec = log_vec.view(
+            hist_sequence.size(0), hist_sequence.size(1), -1
+        )  # batch_size, log_length, news_dim
 
-        user_vec = self.user_encoder(
-            log_vec, hist_sequence_mask, True
-        ).unsqueeze(-1)
+        user_vec = self.user_encoder(log_vec, hist_sequence_mask, True).unsqueeze(-1)
 
         score = torch.bmm(candidate_vec, user_vec).squeeze(-1)
         if compute_loss:
@@ -193,9 +212,13 @@ class MLNR(nn.Module):
             return score
 
     def load_param(self, trained_path):
-        param_dict = torch.load(trained_path, map_location='cpu')['model_state_dict']
+        param_dict = torch.load(trained_path, map_location="cpu")["model_state_dict"]
         for i in param_dict:
-            if i not in self.state_dict().keys() or param_dict[i].size() != self.state_dict()[i.replace('module.', '')].size():
+            if (
+                i not in self.state_dict().keys()
+                or param_dict[i].size()
+                != self.state_dict()[i.replace("module.", "")].size()
+            ):
                 continue
-            self.state_dict()[i.replace('module.', '')].copy_(param_dict[i])
-        print('Loading pretrained model from {}'.format(trained_path))
+            self.state_dict()[i.replace("module.", "")].copy_(param_dict[i])
+        print("Loading pretrained model from {}".format(trained_path))

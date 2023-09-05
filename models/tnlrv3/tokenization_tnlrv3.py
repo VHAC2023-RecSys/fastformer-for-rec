@@ -10,24 +10,23 @@ import unicodedata
 from io import open
 
 import transformers
-if int(transformers.__version__[0]) <=3:
+
+if int(transformers.__version__[0]) <= 3:
     from transformers.tokenization_bert import BertTokenizer, whitespace_tokenize
 else:
-    from transformers.models.bert.tokenization_bert import BertTokenizer, whitespace_tokenize
+    from transformers.models.bert.tokenization_bert import (
+        BertTokenizer,
+        whitespace_tokenize,
+    )
 
 
 logger = logging.getLogger(__name__)
 
-VOCAB_FILES_NAMES = {'vocab_file': 'vocab.txt'}
+VOCAB_FILES_NAMES = {"vocab_file": "vocab.txt"}
 
-PRETRAINED_VOCAB_FILES_MAP = {
-    'vocab_file':
-    {
-    }
-}
+PRETRAINED_VOCAB_FILES_MAP = {"vocab_file": {}}
 
-PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
-}
+PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {}
 
 
 class TuringNLRv3Tokenizer(BertTokenizer):

@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_random_word(vocab_words):
-    i = randint(0, len(vocab_words)-1)
+    i = randint(0, len(vocab_words) - 1)
     return vocab_words[i]
 
 
@@ -30,7 +30,7 @@ def _get_word_split_index(tokens, st, end):
     split_idx = []
     i = st
     while i < end:
-        if (not tokens[i].startswith('##')) or (i == st):
+        if (not tokens[i].startswith("##")) or (i == st):
             split_idx.append(i)
         i += 1
     split_idx.append(end)
@@ -39,15 +39,15 @@ def _get_word_split_index(tokens, st, end):
 
 def _expand_whole_word(tokens, st, end):
     new_st, new_end = st, end
-    while (new_st >= 0) and tokens[new_st].startswith('##'):
+    while (new_st >= 0) and tokens[new_st].startswith("##"):
         new_st -= 1
-    while (new_end < len(tokens)) and tokens[new_end].startswith('##'):
+    while (new_end < len(tokens)) and tokens[new_end].startswith("##"):
         new_end += 1
     return new_st, new_end
 
 
-class Pipeline():
-    """ Pre-process Pipeline Class : callable """
+class Pipeline:
+    """Pre-process Pipeline Class : callable"""
 
     def __init__(self):
         super().__init__()
@@ -70,18 +70,29 @@ class Pipeline():
 
 
 class Preprocess4Seq2seqDecoder(Pipeline):
-    """ Pre-processing steps for pretraining transformer """
+    """Pre-processing steps for pretraining transformer"""
 
-    def __init__(self, vocab_words, indexer, max_len=512, max_tgt_length=128, 
-                 mode="s2s", pos_shift=False, source_type_id=0, target_type_id=1, 
-                 cls_token='[CLS]', sep_token='[SEP]', pad_token='[PAD]'):
+    def __init__(
+        self,
+        vocab_words,
+        indexer,
+        max_len=512,
+        max_tgt_length=128,
+        mode="s2s",
+        pos_shift=False,
+        source_type_id=0,
+        target_type_id=1,
+        cls_token="[CLS]",
+        sep_token="[SEP]",
+        pad_token="[PAD]",
+    ):
         super().__init__()
         self.max_len = max_len
         self.vocab_words = vocab_words  # vocabulary (sub)words
         self.indexer = indexer  # function from token to token index
         self.max_len = max_len
         self._tril_matrix = torch.tril(torch.ones((max_len, max_len), dtype=torch.long))
-        self.task_idx = 3   # relax projection layer for different tasks
+        self.task_idx = 3  # relax projection layer for different tasks
         assert mode in ("s2s", "l2r")
         self.mode = mode
         self.max_tgt_length = max_tgt_length
@@ -106,14 +117,17 @@ class Preprocess4Seq2seqDecoder(Pipeline):
             padded_tokens_a = padded_tokens_a + [self.sep_token]
         assert len(padded_tokens_a) <= max_a_len + self.delta
         if max_a_len + self.delta > len(padded_tokens_a):
-            padded_tokens_a += [self.pad_token] * \
-                (max_a_len + self.delta - len(padded_tokens_a))
+            padded_tokens_a += [self.pad_token] * (
+                max_a_len + self.delta - len(padded_tokens_a)
+            )
         assert len(padded_tokens_a) == max_a_len + self.delta
-        max_len_in_batch = min(self.max_tgt_length +
-                               max_a_len + self.delta, self.max_len)
+        max_len_in_batch = min(
+            self.max_tgt_length + max_a_len + self.delta, self.max_len
+        )
         tokens = padded_tokens_a
-        segment_ids = [self.source_type_id] * (len(padded_tokens_a)) \
-                + [self.target_type_id] * (max_len_in_batch - len(padded_tokens_a))
+        segment_ids = [self.source_type_id] * (len(padded_tokens_a)) + [
+            self.target_type_id
+        ] * (max_len_in_batch - len(padded_tokens_a))
 
         mask_qkv = None
 
@@ -123,7 +137,9 @@ class Preprocess4Seq2seqDecoder(Pipeline):
         for i in range(len(tokens_a) + self.delta, max_a_len + self.delta):
             position_ids.append(0)
         for i in range(max_a_len + self.delta, max_len_in_batch):
-            position_ids.append(i - (max_a_len + self.delta) + len(tokens_a) + self.delta)
+            position_ids.append(
+                i - (max_a_len + self.delta) + len(tokens_a) + self.delta
+            )
 
         # Token Indexing
         input_ids = self.indexer(tokens)
@@ -133,21 +149,30 @@ class Preprocess4Seq2seqDecoder(Pipeline):
             # print("Vocab size = %d" % len(self.vocab_words))
             # for tk_id in input_ids:
             #     print(u"trans %d -> %s" % (tk_id, self.vocab_words[tk_id]))
-            logger.info(u"Input src = %s" % " ".join((self.vocab_words[tk_id]) for tk_id in input_ids))
+            logger.info(
+                "Input src = %s"
+                % " ".join((self.vocab_words[tk_id]) for tk_id in input_ids)
+            )
 
         # Zero Padding
-        input_mask = torch.zeros(
-            max_len_in_batch, max_len_in_batch, dtype=torch.long)
+        input_mask = torch.zeros(max_len_in_batch, max_len_in_batch, dtype=torch.long)
         if self.mode == "s2s":
-            input_mask[:, :len(tokens_a) + self.delta].fill_(1)
+            input_mask[:, : len(tokens_a) + self.delta].fill_(1)
         else:
             st, end = 0, len(tokens_a) + self.delta
-            input_mask[st:end, st:end].copy_(
-                self._tril_matrix[:end, :end])
-            input_mask[end:, :len(tokens_a) + self.delta].fill_(1)
+            input_mask[st:end, st:end].copy_(self._tril_matrix[:end, :end])
+            input_mask[end:, : len(tokens_a) + self.delta].fill_(1)
         second_st, second_end = len(padded_tokens_a), max_len_in_batch
 
         input_mask[second_st:second_end, second_st:second_end].copy_(
-            self._tril_matrix[:second_end-second_st, :second_end-second_st])
+            self._tril_matrix[: second_end - second_st, : second_end - second_st]
+        )
 
-        return (input_ids, segment_ids, position_ids, input_mask, mask_qkv, self.task_idx)
+        return (
+            input_ids,
+            segment_ids,
+            position_ids,
+            input_mask,
+            mask_qkv,
+            self.task_idx,
+        )
