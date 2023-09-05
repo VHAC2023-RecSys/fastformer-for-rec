@@ -90,7 +90,7 @@ def prediction(model, args, device, category_dict, subcategory_dict):
 
 
 if __name__ == "__main__":
-    from parameters import parse_args
+    from args import parse_args
 
     setuplogger()
     args = parse_args()

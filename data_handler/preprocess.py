@@ -1,6 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT License.
 
+from typing import Dict, Optional
 import numpy as np
 import pickle
 from tqdm import tqdm
@@ -8,6 +9,7 @@ import os
 import logging
 import torch
 from torch.utils.data import Dataset, DataLoader
+from args import Args
 
 from utility.utils import MODEL_CLASSES
 
@@ -24,7 +26,7 @@ class NewsInfo:
         else:
             self.category_dict, self.subcategory_dict = {}, {}
 
-        _, _, tokenizer_class = MODEL_CLASSES[args.pretreained_model]
+        _, _, tokenizer_class = MODEL_CLASSES[args.pretrained_model]
         self.tokenizers = tokenizer_class.from_pretrained(
             self.args.pretrained_model_path, do_lower_case=True
         )
@@ -74,7 +76,7 @@ class NewsInfo:
         else:
             return default_value
 
-    def parse_line(self, line):
+    def parse_line(self, line: str):
         doc_id, category, subcategory, title, abstract, body = line.strip("\n").split(
             "\t"
         )
@@ -91,7 +93,7 @@ class NewsInfo:
             self.update_dict(self.category_dict, category)
             self.update_dict(self.subcategory_dict, subcategory)
 
-    def process_news_file(self, file):
+    def process_news_file(self, file: str):
         with open(file, "r") as f:
             for line in tqdm(f):
                 self.parse_line(line)
@@ -170,14 +172,23 @@ def get_doc_input(news, news_index, category_dict, subcategory_dict, args):
     )
 
 
-def get_news_feature(args, mode="train", category_dict=None, subcategory_dict=None):
+def get_news_feature(
+    args: Args,
+    mode="train",
+    category_dict: Optional[Dict] = None,
+    subcategory_dict: Optional[Dict] = None,
+):
     if mode == "train":
         news_info = NewsInfo(args, mode)
     else:
         news_info = NewsInfo(args, mode, category_dict, subcategory_dict)
 
     directory, model_name = os.path.split(args.pretrained_model_path)
-    cache_file = f'{args.root_data_dir}/{mode}/{model_name}_{"+".join(args.news_attributes)}_preprocessed_docs.pkl'
+    cache_file = os.path.join(
+        args.root_data_dir,
+        mode,
+        f'{model_name}_{"+".join(args.news_attributes)}_preprocessed_docs.pkl',
+    )
     if os.path.exists(cache_file):
         logging.info(f"Load cache from {cache_file}")
         with open(cache_file, "rb") as f:

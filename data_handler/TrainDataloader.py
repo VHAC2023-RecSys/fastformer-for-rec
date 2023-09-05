@@ -18,6 +18,8 @@ from torch.utils.data import IterableDataset
 from data_handler.streaming import StreamReaderForSpeedy
 from utility.utils import MODEL_CLASSES
 
+from args import Args
+
 
 class DataLoaderTrainForSpeedyRec(IterableDataset):
     """
@@ -28,7 +30,7 @@ class DataLoaderTrainForSpeedyRec(IterableDataset):
 
     def __init__(
         self,
-        args,
+        args: Args,
         data_files,
         cache_state,
         end,
@@ -53,7 +55,7 @@ class DataLoaderTrainForSpeedyRec(IterableDataset):
         """
         self.args = args
         self.beta_for_cache = args.beta_for_cache
-        self.cache_state = cache_state
+        # self.cache_state = cache_state
         self.end = end
         self.local_rank = local_rank
         self.world_size = world_size
@@ -63,7 +65,6 @@ class DataLoaderTrainForSpeedyRec(IterableDataset):
 
         self.local_end = False
         self.global_end = end
-        self.global_end.value = False
 
         self.news_features = news_features
         self.news_index = news_index
@@ -95,13 +96,13 @@ class DataLoaderTrainForSpeedyRec(IterableDataset):
         self.pool.submit(self._produce)
 
     def __next__(self):
-        dist.barrier()
+        # dist.barrier()
         while self.aval_count == 0:
-            if self.local_end or self.global_end.value:
-                self.global_end.value = True
+            if self.local_end or self.global_end:
+                self.global_end = True
                 break
-        dist.barrier()
-        if self.global_end.value:
+        # dist.barrier()
+        if self.global_end:
             raise StopIteration
         next_batch = self.outputs.get()
         self.aval_count -= 1

@@ -1,9 +1,9 @@
 import torch
 from torch import nn
+from args import Args
 from transformers import BertConfig
 from utility.utils import MODEL_CLASSES
 from models.fast import Fastformer
-from transformers.modeling_bert import BertModel
 
 ffconfig = BertConfig.from_json_file("models/ffconfig.json")
 
@@ -32,12 +32,12 @@ class AttentionPooling(nn.Module):
 
 
 class TextEncoder(nn.Module):
-    def __init__(self, args):
+    def __init__(self, args: Args):
         super(TextEncoder, self).__init__()
         self.args = args
 
         config_class, model_class, tokenizer_class = MODEL_CLASSES[
-            args.pretreained_model
+            args.pretrained_model
         ]
         self.config = config_class.from_pretrained(
             args.pretrained_model_path, output_hidden_states=True
@@ -149,7 +149,7 @@ class UserEncoder(nn.Module):
 
 
 class MLNR(nn.Module):
-    def __init__(self, args):
+    def __init__(self, args: Args):
         super(MLNR, self).__init__()
 
         self.args = args

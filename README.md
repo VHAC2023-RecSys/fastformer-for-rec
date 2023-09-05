@@ -32,7 +32,7 @@ The processed data will be saved to `./data/speedy_data/`.
 ## Training 
 ```
 python train.py \
---pretreained_model unilm \
+--pretrained_model unilm \
 --pretrained_model_path {path to ckpt of unilmv2} \
 --root_data_dir ./data/speedy_data/ \
 --num_hidden_layers 8 \
@@ -60,7 +60,7 @@ Run prediction using saved checkpoint:
 ```
 python submission.py \
 --pretrained_model_path {path to ckpt of unilmv2} \
---pretreained_model unilm \
+--pretrained_model unilm \
 --root_data_dir ./data/speedy_data/ \
 --num_hidden_layers 8 \
 --load_ckpt_name {path to your saved model} \
@@ -76,7 +76,7 @@ You can run the prediction by following command:
 ```
 python submission.py \
 --pretrained_model_path ./speedymind_ckpts \
---pretreained_model unilm \
+--pretrained_model unilm \
 --root_data_dir ./data/speedy_data/ \
 --num_hidden_layers 8 \
 --load_ckpt_name ./speedymind_ckpts/fastformer4rec.pt \
@@ -89,7 +89,7 @@ python submission.py \
 If you want to finetune the model, set `--pretrained_model_path ./speedymind_ckpts --news_attributes title` and run the training command. Here is an example: 
 ```
 python train.py \
---pretreained_model unilm \
+--pretrained_model unilm \
 --pretrained_model_path ./speedymind_ckpts \
 --root_data_dir ./data/speedy_data/ \
 --news_attributes title \

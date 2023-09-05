@@ -10,6 +10,9 @@ import sys
 import traceback
 
 
+tf.compat.v1.disable_eager_execution()
+
+
 def get_files(dirname, filename_pat="*", recursive=False):
     if not tf.io.gfile.exists(dirname):
         logging.warning(f"no file in {dirname} !")
@@ -66,14 +69,14 @@ class StreamReader:
 
         dataset = dataset.batch(batch_size)
         dataset = dataset.prefetch(3)
-        self.next_batch = dataset.make_one_shot_iterator().get_next()
+        self.next_batch = tf.compat.v1.data.make_one_shot_iterator(dataset).get_next()
         self.session = None
 
     def reset(self):
         # print(f"StreamReader reset(), {self.session}, pid:{threading.currentThread()}")
         if self.session:
             self.session.close()
-        self.session = tf.Session()
+        self.session = tf.compat.v1.Session()
         self.endofstream = False
 
     def get_next(self):

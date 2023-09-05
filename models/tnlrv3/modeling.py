@@ -9,26 +9,14 @@ from torch import nn
 from torch.nn.modules.loss import _Loss
 import torch.nn.functional as F
 
-import transformers
-
-if int(transformers.__version__[0]) <= 3:
-    from transformers.modeling_bert import (
-        BertPreTrainedModel,
-        BertSelfOutput,
-        BertIntermediate,
-        BertOutput,
-        BertPredictionHeadTransform,
-        BertPooler,
-    )
-else:
-    from transformers.models.bert.modeling_bert import (
-        BertPreTrainedModel,
-        BertSelfOutput,
-        BertIntermediate,
-        BertOutput,
-        BertPredictionHeadTransform,
-        BertPooler,
-    )
+from transformers.models.bert.modeling_bert import (
+    BertPreTrainedModel,
+    BertSelfOutput,
+    BertIntermediate,
+    BertOutput,
+    BertPredictionHeadTransform,
+    BertPooler,
+)
 
 from transformers.file_utils import WEIGHTS_NAME
 

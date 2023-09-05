@@ -130,13 +130,6 @@ def init_world_size(world_size):
     return torch.cuda.device_count() if world_size == -1 else world_size
 
 
-def check_args_environment(args):
-    if not torch.cuda.is_available():
-        logging.warning("Cuda is not available, " "related options will be disabled")
-    args.enable_gpu = torch.cuda.is_available() & args.enable_gpu
-    return args
-
-
 class timer:
     """
     Time context manager for code block
