@@ -2,4 +2,7 @@ __pycache__
 env
 datasets/
 data/
-hf_models/
+hf_models/unilm-base-cased/*
+!**/.gitkeep
+!hf_models/unilm-base-cased/config.json
+!hf_models/unilm-base-cased/vocab.txt

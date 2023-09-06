@@ -53,7 +53,8 @@ The model will be saved to `./saved_models/`, and validation will be conducted a
 The default pretrained model is UniLM v2, and you can get it from [unilm repo](https://github.com/microsoft/unilm). For other pretrained model, you need set `--pretrained_model==others` and give a new path for `--pretrained_model_path`
 (like `roberta-base` and `microsoft/deberta-base`, which needs to be supported by [transformers](https://huggingface.co/transformers/model_doc/auto.html?highlight=automodel#transformers.AutoModel)).
 
-
+- https://huggingface.co/microsoft/unilm-base-cased/tree/main
+- https://github.com/microsoft/unilm/blob/master/s2s-ft/README.md
 
 ## Prediction
 Run prediction using saved checkpoint:
