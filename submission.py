@@ -8,7 +8,7 @@ import torch
 import numpy as np
 import zipfile
 
-from utility.utils import setuplogger, check_args_environment
+from utility.utils import setuplogger
 from data_handler.preprocess import get_news_feature, infer_news
 from data_handler.TestDataloader import DataLoaderLeader
 from models.speedyrec import MLNR
