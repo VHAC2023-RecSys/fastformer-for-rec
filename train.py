@@ -53,7 +53,7 @@ def train(
     setuplogger()
     if dist_training:
         init_process(local_rank, args.world_size)
-    device = "cuda:1"
+    device = "cuda:0"
     barrier = get_barrier(dist_training)
 
     news_info, news_combined = get_news_feature(args, mode="train")
