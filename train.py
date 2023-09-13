@@ -68,7 +68,6 @@ def train(
         train_path = os.path.join(args.pretrained_model_path, "fastformer4rec.pt")
         model.load_param(train_path)
 
-    print('device', device)
     model = model.to(device)
     rest_param = filter(
         lambda x: id(x) not in list(map(id, model.news_encoder.unicoder.parameters())),
@@ -101,7 +100,7 @@ def train(
     encode_num = 0
     cache = np.zeros((len(news_combined), args.news_dim))
     for ep in range(args.epochs):
-        print("epoch", ep)
+        logging.info(f"Epoch {ep}")
         while len(data_files) > 0:
             data_files.pop()
         data_files.extend(data_paths)

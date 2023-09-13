@@ -3,19 +3,19 @@
 
 import os
 import logging
+from args import Args
 import torch
 import numpy as np
 import zipfile
 
-from utility.utils import setuplogger, dump_args, check_args_environment
+from utility.utils import setuplogger, check_args_environment
 from data_handler.preprocess import get_news_feature, infer_news
 from data_handler.TestDataloader import DataLoaderLeader
 from models.speedyrec import MLNR
 
 
-def generate_submission(args):
+def generate_submission(args: Args):
     setuplogger()
-    args = check_args_environment(args)
     logging.info("-----------start test------------")
 
     local_rank = 0
